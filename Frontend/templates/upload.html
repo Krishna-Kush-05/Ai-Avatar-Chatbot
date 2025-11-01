@@ -1,0 +1,84 @@
+{% extends "upload_base.html" %}
+{% block title %}Upload PDF{% endblock %}
+
+{% block content %}
+<h2 style="text-align:center;">Upload Your PDF</h2>
+
+<div style="display:flex; gap: 30px;">
+  <!-- Upload Box -->
+  <form id="drop-area" action="/upload/preview" method="POST" enctype="multipart/form-data"
+        style="flex:1; background: #f9fbfd; padding: 30px; border: 2px dashed #88c0ff; border-radius: 16px;
+               text-align:center; transition: all 0.3s ease;">
+    
+    <label for="pdf-input" style="cursor:pointer;">
+      <img src="{{ url_for('static', filename='img/upload-icon.png') }}" width="80" />
+      <p style="font-size: 1.1rem;">Drag & Drop or Click to select a PDF</p>
+    </label>
+
+    <input type="file" name="pdf" id="pdf-input" accept="application/pdf" style="display:none" required />
+    <br><br>
+    <button type="submit" style="
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  border: none;
+  border-radius: 30px;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+">
+  Preview
+</button>
+
+  </form>
+
+  <!-- Preview Box -->
+  {% if preview_path %}
+  <div style="flex:1;">
+    <h3>Preview:</h3>
+    <img src="{{ preview_path }}" style="max-width:100%; border:1px solid #ccc; border-radius:12px;" />
+    <form action="/upload/submit" method="POST">
+      <input type="hidden" name="filename" value="{{ filename }}">
+      <input type="hidden" name="filepath" value="{{ filepath }}">
+      <input type="hidden" name="filesize" value="{{ filesize }}">
+      <input type="hidden" name="pages" value="{{ pages }}">
+      <br>
+      <button type="submit" style="
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #81C784, #66BB6A);
+  border: none;
+  border-radius: 30px;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+">
+  Upload
+</button>
+
+    </form>
+  </div>
+  {% endif %}
+</div>
+<style>
+  #drop-area.highlight {
+    background: #e6f0ff;
+    border-color: #4f8cff;
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.2);
+    transform: scale(1.02);
+    transition: 0.3s ease;
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+  }
+</style>
+
+{% endblock %}
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}
+

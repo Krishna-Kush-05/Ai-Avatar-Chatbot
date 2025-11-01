@@ -1,0 +1,33 @@
+# Ignore Python virtual environment
+venv/
+.venv/
+env/
+.env
+
+# Ignore Python bytecode and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore IDE and editor-specific files
+.idea/
+.vscode/
+
+# Ignore database files
+*.db
+*.sqlite3
+chat_avatar.db
+
+# Ignore log files
+*.log
+
+# Ignore large model files (optional, but recommended)
+# Consider using Git LFS (Large File Storage) for these if you need to version them.
+*.onnx
+*.pkl
+*.h5
+
+# Ignore operating system-specific files
+.DS_Store
+Thumbs.db
