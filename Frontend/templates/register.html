@@ -1,0 +1,55 @@
+{% extends "auth_layout.html" %}
+
+{% block auth_content %}
+    <p style="text-align: center; color: var(--color-text-light); margin-top: -1.5rem; margin-bottom: 2rem;">
+        Creating a new <strong>{{ role }}</strong> account.
+    </p>
+
+    <!-- Display All Form Errors -->
+    {% if form.errors %}
+        <ul class="form-error-list">
+        {% for field_name, field_errors in form.errors.items() %}
+            {% for error in field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="POST" action="">
+        {{ form.hidden_tag() }} <!-- CSRF Token & Role -->
+
+        <div class="form-group">
+            {{ form.name.label }}
+            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="e.g., Jane Doe") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.username.label }}
+            {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), placeholder="e.g., janedoe99") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.email.label }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="you@example.com") }}
+        </div>
+        
+        <div class="form-group">
+            {{ form.password.label }}
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Minimum 6 characters") }}
+        </div>
+        
+        <div class="form-group">
+            {{ form.confirm_password.label }}
+            {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else ""), placeholder="Confirm your password") }}
+        </div>
+        
+        <div class="form-group" style="margin-top: 2rem;">
+            {{ form.submit(class="btn btn-primary btn-full-width") }}
+        </div>
+    </form>
+    
+    <div class="auth-footer">
+        <p>Already have an account? <a href="{{ url_for('login') }}">Log In</a></p>
+    </div>
+{% endblock %}

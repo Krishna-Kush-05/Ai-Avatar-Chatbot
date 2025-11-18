@@ -1,0 +1,89 @@
+{% extends "app_layout.html" %}
+
+{% block app_content %}
+<div class="page-header">
+    <h1>My Profile</h1>
+    <p>View and update your personal information.</p>
+</div>
+
+<div class="main-content-grid">
+    <!-- Profile Form -->
+    <div class="main-column">
+        <div class="card">
+            <div class="card-header">
+                <h3>Edit Profile</h3>
+            </div>
+            <form method="POST" action="{{ url_for('profile') }}">
+                <div class="card-body">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="form-group">
+                        {{ form.name.label }}
+                        {{ form.name(class="form-control") }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form.institution.label }}
+                        {{ form.institution(class="form-control") }}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.email.label }}
+                        {{ form.email(class="form-control") }}
+                        <small style="color: var(--color-text-light); margin-top: 0.25rem; display: block;">Email address cannot be changed.</small>
+                    </div>
+
+                    <div class="form-group">
+                        {{ form.username.label }}
+                        {{ form.username(class="form-control") }}
+                         <small style="color: var(--color-text-light); margin-top: 0.25rem; display: block;">Username cannot be changed.</small>
+                    </div>
+
+                </div>
+                <div class="card-footer" style="text-align: right;">
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Profile Info Sidebar -->
+    <div class="sidebar-column">
+        <div class="card">
+            <div class="card-header">
+                <h3>Profile Details</h3>
+            </div>
+            <div class="card-body">
+                <dl class="profile-details-grid">
+                    <dt>Full Name</dt>
+                    <dd>{{ current_user.name }}</dd>
+                    
+                    <dt>Username</dt>
+                    <dd>{{ current_user.username }}</dd>
+
+                    <dt>Email</dt>
+                    <dd>{{ current_user.email }}</dd>
+
+                    <dt>Role</dt>
+                    <dd>{{ current_user.role.title() }}</dd>
+                    
+                    <dt>Institution</dt>
+                    <dd>{{ current_user.institution or 'Not set' }}</dd>
+                </dl>
+
+                {% if current_user.role == 'student' and instructor %}
+                    <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--color-border);">
+                    <h5 style="margin-bottom: 1rem;">My Instructor</h5>
+                    <dl class="profile-details-grid">
+                        <dt>Name</dt>
+                        <dd>{{ instructor.get_display_name() }}</dd>
+                        
+                        <dt>Email</dt>
+                        <dd>{{ instructor.email }}</dd>
+                    </dl>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

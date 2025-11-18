@@ -8,8 +8,7 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Load the model once when the file is imported
-# Force the model to run on the CPU
-model = WhisperModel("tiny", device="cpu", compute_type="int8")# you can also use "small"
+model = WhisperModel("tiny", compute_type="auto")  # you can also use "small"
 
 def transcribe_audio_file(audio_file):
     filename = secure_filename(audio_file.filename)

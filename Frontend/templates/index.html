@@ -1,189 +1,46 @@
-{% extends "base.html" %}
-{% block title %}Voice Chatbot{% endblock %}
+{% extends "app_layout.html" %}
+{% block title %}AI Chat Assistant{% endblock %}
 
-{% block content %}
-<h1 style="display: flex; justify-content: space-between; align-items: center; margin-top: -10px;">
-  <span>AI Avtar Chatbot</span>
-  <button id="sidebarToggleBtn" title="Toggle Sidebar">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-      stroke-linejoin="round" style="width: 26px; height: 26px; stroke: #4d575a;">
-      <line x1="3" y1="6" x2="21" y2="6"></line>
-      <line x1="3" y1="12" x2="21" y2="12"></line>
-      <line x1="3" y1="18" x2="21" y2="18"></line>
-    </svg>
-  </button>
-</h1>
-
-
-
-<!-- Chat messages area -->
-<div id="chat-box" class="chat-box">
-  <div id="greeting-message" class="greeting-message">
-  <div id="greeting-line1" class="greeting-text">Hello</div>
-  <div class="greeting-text">What can I help you with today?</div>
+{% block app_content %}
+<!-- The chat layout will fill the app_content area -->
+<div class="chat-layout">
+    
+    <!-- Chat messages area -->
+    <div id="chat-box" class="chat-box">
+        <!-- Initial Greeting -->
+        <div id="greeting-message">
+            <div class="bot-response-container">
+                <div class="bot-avatar">AI</div>
+                <div class="bot-response-content">
+                    <p>Hello! What can I help you with today?</p>
+                </div>
+            </div>
+        </div>
+        <!-- Chat messages will be dynamically added here -->
+    </div>
+    
+    <!-- Chat input area -->
+    <div class="chat-input-area">
+        <form id="chat-form" class="chat-form">
+            <input type="text" id="chat-input" placeholder="Ask anything..." autocomplete="off" />
+            
+            <!-- Voice Record Button -->
+            <button id="recordButton" type="button" class="chat-btn record-btn" title="Speak">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            </button>
+            
+            <!-- Send Button -->
+            <button type="submit" class="chat-btn" title="Send">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </form>
+    </div>
 </div>
+{% endblock %}
 
-</div>
-  <!-- Chat messages dynamically added here -->
-  <!-- Floating Controls Inside Chat Box -->
-  <div class="floating-input-card">
-    <form id="chat-form" class="chat-form" style="width: 100%;">
-      <input type="text" id="chat-input" placeholder="Ask anything" autocomplete="off" />
-      <div class="input-row">
-
-        <div style="display: flex; align-items: center; gap: 10px; margin-left: auto;"></div>
-        <!-- 🎤 Speak button must have this ID to work -->
-        <button id="recordButton" type="button" class="speak-btn">🎤 Speak</button>
-        <div id="loader" class="loader"></div>
-
-
-        <!-- Send button -->
-        <button type="submit" class="send-btn">Send</button>
-      </div>
-    </form>
-
-  </div>
-
-  <!-- Controls Section -->
-
-
-  <style>
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    }
-
-    /* ==== TOGGLE BUTTON STYLING ==== */
-    #sidebarToggleBtn {
-      position: absolute;
-      top: 20px;
-      right: 30px;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      z-index: 1001;
-      padding: 8px;
-      border-radius: 50%;
-      transition: transform 0.3s ease, background-color 0.3s ease;
-    }
-
-    #sidebarToggleBtn svg {
-      width: 26px;
-      height: 26px;
-      stroke: #555;
-      transition: stroke 0.3s ease, transform 0.4s ease;
-    }
-
-    #sidebarToggleBtn.active svg {
-      stroke: #00c6ff;
-      transform: rotate(90deg);
-    }
-
-
-    /* Floating input card */
-    .floating-input-card {
-  position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: clamp(50%, 700px, 85%);
-  background: rgb(245, 242, 242);
-  border-radius: 24px;
-  box-shadow: 0 8px 16px rgba(33, 93, 234, 0.563);
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  z-index: 10;
-}
-
-
-    /* Input field */
-    #chat-input {
-      border: none;
-      background: transparent;
-      font-size: 1rem;
-      padding: 8px;
-      outline: none;
-      width: 100%;
-    }
-
-    /* Row with dropdown + buttons */
-    .input-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    /* Fake dropdown styling */
-    .dropdown-mock {
-      background: #f1f3f4;
-      border-radius: 16px;
-      padding: 6px 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 14px;
-      color: #333;
-      cursor: pointer;
-    }
-
-    /* Buttons */
-    .speak-btn {
-      background: linear-gradient(to right, #7240a7, #095ae7);
-      color: white;
-      border: none;
-      border-radius: 20px;
-      padding: 8px 16px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .send-btn {
-      background: linear-gradient(to right, #4caf50, #81c784);
-      color: white;
-      border: none;
-      border-radius: 20px;
-      padding: 8px 20px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-   .greeting-message {
-  background-color: #eaf2f8;
-  border-radius: 12px;
-  padding: 120px 20px;
-  margin: 20px auto;
-  text-align: center;
-  max-width: 800px;
-  font-weight: bold;
-  font-size: clamp(1.9rem, 5vw, 2.6rem);
-  color: #202124b8;
-  overflow: hidden;
-  max-height: 500px;
-  opacity: 1;
-  transition: all 0.6s ease-in-out;
-}
-
-.greeting-message.fade-out {
-  opacity: 0;
-  max-height: 0;
-  padding: 0;
-  margin: 0;
-}
-
-.greeting-text {
-  margin: 5px 0;
-}
-  </style>
-
-
-  {% endblock %}
-
-  {% block scripts %}
-
-  <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/index.js') }}"></script>
-  {% endblock %}
+{% block head_scripts %}
+<!-- This script block injects scripts into the <head> of base.html -->
+<!-- Your existing script.js will handle the chat logic -->
+<!-- Ensure your script.js is loaded -->
+<script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
+{% endblock %}

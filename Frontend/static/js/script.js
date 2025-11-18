@@ -55,7 +55,7 @@ function createBotResponseContainer() {
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'bot-response-content';
-
+    
     const timestampDiv = document.createElement('div');
     timestampDiv.className = 'bot-response-timestamp';
     timestampDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -67,12 +67,10 @@ function createBotResponseContainer() {
     return contentDiv; // Return the element where text will be streamed
 }
 
-
 // --- Main Chat Logic (Streaming) ---
 function handleStream(prompt) {
     showTypingIndicator();
 
-    // These variables are reset for each new message stream
     let fullReply = "";
     let replyTextElement = null;
 
@@ -80,41 +78,38 @@ function handleStream(prompt) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: prompt }),
-        onopen: (res) => {
-            if (!res.ok) {
-                throw new Error("Stream connection failed");
-            }
-        },
+        onopen: (res) => { if (!res.ok) throw new Error("Stream connection failed"); },
         onmessage(ev) {
-            // Create the bot's message bubble on the first message
             if (replyTextElement === null) {
                 removeTypingIndicator();
                 replyTextElement = createBotResponseContainer();
             }
 
             try {
-                // The data from your backend is a JSON string, so we must parse it
+                // Parse the JSON data from the SSE message
                 const data = JSON.parse(ev.data);
-                const textChunk = data.text;
-
-                // Check which event was sent from the backend
-                if (ev.event === "token") {
-                    // If it's a token, append it for the "typing" effect
+                const textChunk = data.text || "";
+                
+                // Get the event type from the message metadata
+                const eventType = ev.event || "token"; // Default to token if not specified
+                
+                if (eventType === "token") {
+                    // Accumulate token chunks for real-time streaming display
                     fullReply += textChunk;
-                    // Render the accumulated text as HTML on every token
+                    
+                    // Re-render in real-time with markdown parsing
                     replyTextElement.innerHTML = marked.parse(fullReply);
-
-                } else if (ev.event === "final_response") {
-                    // The final response event is now used for "finishing touches"
-                    fullReply = textChunk; 
-                    replyTextElement.innerHTML = marked.parse(fullReply); // Final render for consistency
-
-                    // 1. Add copy buttons to all code blocks
+                } else if (eventType === "final_response") {
+                    // Final response received - apply polish and finalize
+                    fullReply = textChunk; // Use the final complete response
+                    replyTextElement.innerHTML = marked.parse(fullReply);
+                    
+                    // Add copy buttons to all code blocks
                     replyTextElement.querySelectorAll('pre').forEach(pre => {
                         const codeBlock = pre.querySelector('code');
                         if (!codeBlock) return;
                         
-                        // Avoid adding a duplicate button
+                        // Avoid adding duplicate buttons if we re-run this logic
                         if (pre.querySelector('.copy-code-btn')) return;
 
                         const copyButton = document.createElement('button');
@@ -129,16 +124,15 @@ function handleStream(prompt) {
                         pre.appendChild(copyButton);
                     });
 
-                    // 2. Apply syntax highlighting
-                    hljs.highlightAll();
+                    // Apply syntax highlighting to all code blocks
+                    hljs.highlightAll(); 
 
-                    // 3. Trigger text-to-speech (replace code blocks with a placeholder message)
-                    const textForSpeech = fullReply.replace(/```[\s\S]*?```/g, "Code block provided.");
-                    speak(textForSpeech);
+                    // Speak the final response
+                    speak(fullReply.replace(/```[\s\S]*?```/g, "Code block provided."));
                 }
             } catch (e) {
-                console.error("Failed to parse stream data:", ev.data, e);
-                replyTextElement.textContent = fullReply + " [Error parsing stream]";
+                // If parsing fails, log and continue
+                console.error("Failed to parse event data:", e);
             }
 
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -146,14 +140,13 @@ function handleStream(prompt) {
         onerror(err) {
             console.error("Stream error:", err);
             removeTypingIndicator();
-            const errorElement = replyTextElement || createBotResponseContainer();
-            errorElement.innerHTML = "⚠ An error occurred. Please check the console and try again.";
+            const errorElement = createBotResponseContainer();
+            errorElement.textContent = "⚠️ Stream error. Please try again.";
         },
     });
 }
 
-
-// --- Event Listeners and Voice Recording ---
+// --- Event Listeners and Voice Recording (No significant changes here) ---
 chatForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const message = chatInput.value.trim();
@@ -194,36 +187,20 @@ recordButton.addEventListener('click', async () => {
                 sendAudioToBackend(audioBlob);
                 stream.getTracks().forEach(track => track.stop());
             };
-            mediaRecorder.start();
-            recordButton.textContent = '🛑 Stop';
-            isRecording = true;
+            mediaRecorder.start(); recordButton.textContent = '🛑 Stop'; isRecording = true;
         } catch (err) {
             console.error("Mic access error:", err);
             const errElement = createBotResponseContainer();
             errElement.textContent = "Microphone access denied.";
         }
     } else {
-        mediaRecorder.stop();
-        recordButton.textContent = '🎤 Speak';
-        isRecording = false;
+        mediaRecorder.stop(); recordButton.textContent = '🎤 Speak'; isRecording = false;
     }
 });
 
 function speak(text) {
-    if (currentAudio && !currentAudio.paused) {
-        currentAudio.pause();
-    }
-    fetch("/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.audio_url) {
-            currentAudio = new Audio(data.audio_url);
-            currentAudio.play();
-        }
-    })
+    if (currentAudio && !currentAudio.paused) currentAudio.pause();
+    fetch("/speak", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text })})
+    .then(res => res.json()).then(data => { if (data.audio_url) { currentAudio = new Audio(data.audio_url); currentAudio.play(); }})
     .catch(err => console.error("TTS Error:", err));
 }

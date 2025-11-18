@@ -32,10 +32,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function getTimeGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning, Student";
-  if (hour < 17) return "Good afternoon, Student";
-  if (hour < 21) return "Good evening, Student";
-  return "Good evening, Student";
+  if (hour < 12) return "Good morning, Manmath";
+  if (hour < 17) return "Good afternoon, Manmath";
+  if (hour < 21) return "Good evening, Manmath";
+  return "Good evening, Manmath";
 }
 
 const greetingEl = document.getElementById("greeting-message");

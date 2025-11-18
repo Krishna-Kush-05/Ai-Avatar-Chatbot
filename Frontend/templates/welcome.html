@@ -1,0 +1,28 @@
+{% extends "auth_layout.html" %}
+
+{% block auth_content %}
+    <p style="text-align: center; color: var(--color-text-light); margin-top: -1.5rem; margin-bottom: 2rem;">
+        Choose your role to get started.
+    </p>
+
+    <div class="role-grid">
+        <a href="{{ url_for('register', role='teacher') }}" class="role-card">
+            <h2>Teacher / Educator</h2>
+            <p>Create and manage custom AI chatbots for your students.</p>
+        </a>
+
+        <a href="{{ url_for('register', role='professional') }}" class="role-card">
+            <h2>Professional / Company</h2>
+            <p>Build AI assistants for your team or customer support.</p>
+        </a>
+        
+        <a href="{{ url_for('register', role='student') }}" class="role-card">
+            <h2>Student / Learner</h2>
+            <p>Access and interact with AI assistants from your institute.</p>
+        </a>
+    </div>
+    
+    <div class="auth-footer">
+        <p>Already have an account? <a href="{{ url_for('login') }}">Log In Here</a></p>
+    </div>
+{% endblock %}

@@ -1,84 +1,76 @@
-{% extends "upload_base.html" %}
-{% block title %}Upload PDF{% endblock %}
+{% extends "app_layout.html" %}
 
-{% block content %}
-<h2 style="text-align:center;">Upload Your PDF</h2>
-
-<div style="display:flex; gap: 30px;">
-  <!-- Upload Box -->
-  <form id="drop-area" action="/upload/preview" method="POST" enctype="multipart/form-data"
-        style="flex:1; background: #f9fbfd; padding: 30px; border: 2px dashed #88c0ff; border-radius: 16px;
-               text-align:center; transition: all 0.3s ease;">
-    
-    <label for="pdf-input" style="cursor:pointer;">
-      <img src="{{ url_for('static', filename='img/upload-icon.png') }}" width="80" />
-      <p style="font-size: 1.1rem;">Drag & Drop or Click to select a PDF</p>
-    </label>
-
-    <input type="file" name="pdf" id="pdf-input" accept="application/pdf" style="display:none" required />
-    <br><br>
-    <button type="submit" style="
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #4facfe, #00f2fe);
-  border: none;
-  border-radius: 30px;
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-">
-  Preview
-</button>
-
-  </form>
-
-  <!-- Preview Box -->
-  {% if preview_path %}
-  <div style="flex:1;">
-    <h3>Preview:</h3>
-    <img src="{{ preview_path }}" style="max-width:100%; border:1px solid #ccc; border-radius:12px;" />
-    <form action="/upload/submit" method="POST">
-      <input type="hidden" name="filename" value="{{ filename }}">
-      <input type="hidden" name="filepath" value="{{ filepath }}">
-      <input type="hidden" name="filesize" value="{{ filesize }}">
-      <input type="hidden" name="pages" value="{{ pages }}">
-      <br>
-      <button type="submit" style="
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #81C784, #66BB6A);
-  border: none;
-  border-radius: 30px;
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-">
-  Upload
-</button>
-
-    </form>
-  </div>
-  {% endif %}
+{% block app_content %}
+<div class="page-header">
+    <h1>Upload Knowledge</h1>
+    <p>Upload PDF files to an AI Assistant's knowledge base.</p>
 </div>
-<style>
-  #drop-area.highlight {
-    background: #e6f0ff;
-    border-color: #4f8cff;
-    box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.2);
-    transform: scale(1.02);
-    transition: 0.3s ease;
-  }
 
-  button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-  }
-</style>
-
+<div class="upload-container">
+    <div class="card">
+        <div class="card-header">
+            <h3>Upload New File</h3>
+        </div>
+        
+        <!-- Upload Form -->
+        <form action="{{ url_for('preview_pdf') }}" method="POST" enctype="multipart/form-data">
+            <div class="card-body">
+                
+                <!-- Step 1: Select Assistant -->
+                <div class="form-group">
+                    <label for="chatbot_id">Step 1: Select AI Assistant</label>
+                    <select name="chatbot_id" id="chatbot_id" class="form-control" required>
+                        <option value="" disabled {% if not selected_bot_id %}selected{% endif %}>-- Choose an assistant --</option>
+                        {% for bot in bots %}
+                            <option value="{{ bot.id }}" {% if selected_bot_id == bot.id %}selected{% endif %}>
+                                {{ bot.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if error %}
+                        <div class="form-field-error">{{ error }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Step 2: Upload File -->
+                <div class="form-group">
+                    <label for="pdf">Step 2: Choose PDF File</label>
+                    <input type="file" name="pdf" id="pdf" class="form-control" accept=".pdf" required>
+                </div>
+            </div>
+            <div class="card-footer" style="text-align: right;">
+                <button type="submit" class="btn btn-primary">Generate Preview</button>
+            </div>
+        </form>
+        
+        <!-- Preview and Confirm Form -->
+        {% if preview_path %}
+        <hr style="border: 0; border-top: 1px solid var(--color-border);">
+        <form action="{{ url_for('upload_submit') }}" method="POST">
+            <div class="card-body">
+                <h3 style="margin-bottom: 1.5rem;">Step 3: Preview & Confirm</h3>
+                
+                <!-- Hidden fields to pass data -->
+                <input type="hidden" name="filename" value="{{ filename }}">
+                <input type="hidden" name="filepath" value="{{ filepath }}">
+                <input type="hidden" name="filesize" value="{{ filesize }}">
+                <input type="hidden" name="pages" value="{{ pages }}">
+                <input type="hidden" name="chatbot_id" value="{{ selected_bot_id }}">
+                
+                <div class="upload-preview-box">
+                    <img src="{{ preview_path }}" alt="PDF Preview">
+                    <p class="upload-details">
+                        <strong>File:</strong> {{ filename }}<br>
+                        <strong>Size:</strong> {{ filesize }} KB | <strong>Pages:</strong> {{ pages }}
+                    </p>
+                </div>
+            </div>
+            <div class="card-footer" style="text-align: right;">
+                <a href="{{ url_for('upload') }}" class="btn btn-secondary" style="margin-right: 1rem;">Cancel</a>
+                <button type="submit" class="btn btn-primary">Confirm & Upload</button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}
-{% block scripts %}
-  <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
-{% endblock %}
-

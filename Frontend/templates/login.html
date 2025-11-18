@@ -1,0 +1,36 @@
+{% extends "auth_layout.html" %}
+
+{% block auth_content %}
+    <!-- Display All Form Errors -->
+    {% if form.errors %}
+        <ul class="form-error-list">
+        {% for field_name, field_errors in form.errors.items() %}
+            {% for error in field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="POST" action="">
+        {{ form.hidden_tag() }} <!-- CSRF Token -->
+
+        <div class="form-group">
+            {{ form.email.label }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="you@example.com") }}
+        </div>
+        
+        <div class="form-group">
+            {{ form.password.label }}
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="••••••••") }}
+        </div>
+        
+        <div class="form-group" style="margin-top: 2rem;">
+            {{ form.submit(class="btn btn-primary btn-full-width") }}
+        </div>
+    </form>
+    
+    <div class="auth-footer">
+        <p>Don't have an account? <a href="{{ url_for('welcome') }}">Register here</a></p>
+    </div>
+{% endblock %}

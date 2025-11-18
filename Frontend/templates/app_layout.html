@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block body_content %}
+<div class="app-layout">
+    
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('dashboard') }}" class="sidebar-logo">AI Platform</a>
+        </div>
+        <ul class="sidebar-nav">
+            {% if current_user.role in ['teacher', 'professional', 'institute'] %}
+                <!-- Creator Links -->
+                <li class="sidebar-nav-item">
+                    <a href="{{ url_for('dashboard') }}" class="sidebar-nav-link {% if request.path == url_for('dashboard') %}active{% endif %}">
+                        <i data-feather="grid"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+            {% endif %}
+            
+            <!-- Shared Links -->
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('chat') }}" class="sidebar-nav-link {% if request.path == url_for('chat') %}active{% endif %}">
+                    <i data-feather="message-square"></i>
+                    <span>AI Chat</span>
+                </a>
+            </li>
+            {% if current_user.role in ['teacher', 'professional', 'institute'] %}
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('upload') }}" class="sidebar-nav-link {% if request.path == url_for('upload') %}active{% endif %}">
+                    <i data-feather="upload-cloud"></i>
+                    <span>Upload Knowledge</span>
+                </a>
+            </li>
+            {% endif %}
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('resources') }}" class="sidebar-nav-link {% if request.path == url_for('resources') %}active{% endif %}">
+                    <i data-feather="book"></i>
+                    <span>Resources</span>
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('knowledge_base') }}" class="sidebar-nav-link {% if request.path == url_for('knowledge_base') %}active{% endif %}">
+                    <i data-feather="database"></i>
+                    <span>Knowledge Base</span>
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('admin_tools') }}" class="sidebar-nav-link {% if request.path == url_for('admin_tools') %}active{% endif %}">
+                    <i data-feather="settings"></i>
+                    <span>Admin</span>
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a href="{{ url_for('profile') }}" class="sidebar-nav-link {% if request.path == url_for('profile') %}active{% endif %}">
+                    <i data-feather="user"></i>
+                    <span>My Profile</span>
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="sidebar-nav-link">
+                <i data-feather="log-out"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="profile-dropdown">
+            <button class="profile-btn" id="profile-btn">
+                <span class="profile-avatar">{{ current_user.get_display_name()[0] | upper }}</span>
+                <span class="profile-name">{{ current_user.get_display_name() }}</span>
+                <i data-feather="chevron-down" style="width: 16px;"></i>
+            </button>
+            <div class="profile-dropdown-menu" id="profile-menu">
+                <div class="dropdown-header">
+                    <h6 class="dropdown-header-name">{{ current_user.get_display_name() }}</h6>
+                    <p class="dropdown-header-email">{{ current_user.email }}</p>
+                </div>
+                <a href="{{ url_for('profile') }}" class="dropdown-item">
+                    <i data-feather="user"></i>
+                    <span>My Profile</span>
+                </a>
+                <div class="dropdown-divider"></div>
+                <a href="{{ url_for('logout') }}" class="dropdown-item">
+                    <i data-feather="log-out"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="content-wrapper">
+        
+        <!-- Flash Messages -->
+        <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">
+                        {{ message }}
+                        <button type="button" class="close-btn" onclick="this.parentElement.style.display='none'">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        </div>
+
+        {% block app_content %}{% endblock %}
+    </main>
+</div>
+
+<script>
+    // Simple script for profile dropdown
+    document.addEventListener('DOMContentLoaded', function() {
+        const profileBtn = document.getElementById('profile-btn');
+        const profileMenu = document.getElementById('profile-menu');
+        
+        if (profileBtn) {
+            profileBtn.addEventListener('click', function() {
+                profileMenu.classList.toggle('show');
+            });
+        }
+        
+        // Close dropdown if clicking outside
+        document.addEventListener('click', function(event) {
+            if (profileBtn && profileMenu && !profileBtn.contains(event.target) && !profileMenu.contains(event.target)) {
+                profileMenu.classList.remove('show');
+            }
+        });
+
+        // Auto-dismiss flash messages
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.flash-messages .alert');
+            alerts.forEach(alert => {
+                alert.style.transition = 'opacity 0.5s ease';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.style.display = 'none', 500);
+            });
+        }, 5000); // 5 seconds
+    });
+</script>
+{% endblock %}

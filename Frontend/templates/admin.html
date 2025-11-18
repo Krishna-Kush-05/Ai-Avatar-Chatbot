@@ -1,0 +1,103 @@
+{% extends "app_layout.html" %}
+
+{% block app_content %}
+<div class="page-header">
+    <h1>Admin Tools</h1>
+    <p>Manage and maintain your knowledge database.</p>
+</div>
+
+<div class="main-content-grid">
+    <!-- Admin Actions -->
+    <div class="main-column">
+        <div class="card">
+            <div class="card-header" style="background-color: #fee; border-bottom: 2px solid #f44;">
+                <h3 style="color: #c00; margin: 0;">Danger Zone</h3>
+            </div>
+            <div class="card-body">
+                <p>These actions are irreversible and will delete data from the vector database.</p>
+                <div style="margin-top: 1rem;">
+                    <button class="btn btn-danger" onclick="resetDatabase()" style="padding: 0.75rem 1.5rem; font-size: 1rem;">Reset Document Database</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Status -->
+        <div id="action-status" style="display:none;">
+            <div class="card">
+                <div class="card-body">
+                    <div id="action-message" class="alert"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Information -->
+    <div class="sidebar-column">
+        <div class="card">
+            <div class="card-header">
+                <h3>System Information</h3>
+            </div>
+            <div class="card-body" id="system-info">
+                <p style="color: var(--color-text-light);">Loading...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loadSystemInfo() {
+        fetch('http://127.0.0.1:8000/db_stats')
+            .then(response => response.json())
+            .then(data => {
+                let html = '<ul style="list-style: none; padding: 0;">';
+                
+                if (data.vector_db) {
+                    html += `<li><strong>Collections:</strong> ${data.vector_db.collections || 0}</li>`;
+                    html += `<li><strong>Total Documents:</strong> ${data.vector_db.total_documents || 0}</li>`;
+                    html += `<li><strong>Indexed Chunks:</strong> ${data.vector_db.indexed_chunks || 0}</li>`;
+                }
+                
+                html += `<li><strong>Q&A Pairs:</strong> ${data.qa_pairs || 0}</li>`;
+                html += `<li><strong>Raw Files:</strong> ${data.raw_count || 0}</li>`;
+                
+                html += '</ul>';
+                document.getElementById('system-info').innerHTML = html;
+            })
+            .catch(error => {
+                document.getElementById('system-info').innerHTML = '<p style="color: red;">Failed to load system info</p>';
+                console.error('Error:', error);
+            });
+    }
+
+    function resetDatabase() {
+        if (!confirm('⚠️ This will reset the entire vector database and re-index all documents. Are you sure?')) {
+            return;
+        }
+        
+        if (!confirm('This action is IRREVERSIBLE. Continue?')) {
+            return;
+        }
+
+        document.getElementById('action-status').style.display = 'block';
+        document.getElementById('action-message').innerHTML = '<p style="color: #007bff;">Resetting database...</p>';
+
+        fetch('http://127.0.0.1:8000/reset_db', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('action-message').innerHTML = `<p style="color: green; margin: 0;"><strong>✓ Success:</strong> ${data.message}</p>`;
+            setTimeout(loadSystemInfo, 1000);
+            setTimeout(() => {
+                document.getElementById('action-status').style.display = 'none';
+            }, 5000);
+        })
+        .catch(error => {
+            document.getElementById('action-message').innerHTML = `<p style="color: red; margin: 0;"><strong>✗ Error:</strong> ${error.message}</p>`;
+        });
+    }
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', loadSystemInfo);
+</script>
+{% endblock %}

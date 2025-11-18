@@ -1,0 +1,277 @@
+{% extends "app_layout.html" %}
+
+{% block app_content %}
+<style>
+    .qa-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .qa-table thead {
+        background-color: var(--color-bg-secondary);
+        border-bottom: 2px solid var(--color-border);
+    }
+    
+    .qa-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--color-text-dark);
+    }
+    
+    .qa-table tbody tr {
+        border-bottom: 1px solid var(--color-border);
+        transition: background-color 0.2s ease;
+    }
+    
+    .qa-table tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    .qa-table td {
+        padding: 1rem;
+        color: var(--color-text);
+    }
+    
+    .qa-question {
+        font-weight: 600;
+        color: var(--color-text-dark);
+        margin-bottom: 0.25rem;
+    }
+    
+    .qa-answer {
+        color: var(--color-text);
+        line-height: 1.5;
+        margin-bottom: 0.5rem;
+        max-height: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .qa-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    .qa-tag {
+        display: inline-block;
+        background-color: #e8f0fe;
+        color: #1a73e8;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .qa-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--color-text-light);
+    }
+    
+    .empty-state-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+<div class="page-header">
+    <h1>Knowledge Base Management</h1>
+    <p>Add, view, and manage Q&A pairs for your AI assistants.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+    <!-- Left: Add Q&A Form -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Add New Q&A Pair</h3>
+        </div>
+        <form id="qa-form" method="POST">
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="question">Question</label>
+                    <textarea id="question" name="question" class="form-control" rows="3" placeholder="Enter a question..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="answer">Answer</label>
+                    <textarea id="answer" name="answer" class="form-control" rows="4" placeholder="Enter the answer..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="tags">Tags (comma separated)</label>
+                    <input type="text" id="tags" name="tags" class="form-control" placeholder="e.g., admissions, fee, contact">
+                </div>
+            </div>
+            <div class="card-footer">
+                <button type="button" class="btn btn-primary" onclick="addQAPair()">Add to Knowledge Base</button>
+            </div>
+        </form>
+
+        <!-- Add Status -->
+        <div id="add-status" style="display:none; margin-top: 1rem;">
+            <div class="card">
+                <div class="card-body">
+                    <div id="add-message" class="alert"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Existing Q&A Status -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Existing Q&A Status</h3>
+        </div>
+        <div class="card-body" id="qa-status">
+            <p style="color: var(--color-text-light);">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Full Width: Existing Q&A Pairs Table -->
+<div class="card">
+    <div class="card-header">
+        <h3>Existing Q&A Pairs</h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div id="qa-list">
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <p>Loading Q&A pairs...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loadKnowledgeBase() {
+        fetch('http://127.0.0.1:8000/knowledge')
+            .then(response => response.json())
+            .then(items => {
+                let html = '';
+                let totalPairs = items ? items.length : 0;
+                
+                // Update status card
+                let statusHtml = '<ul style="list-style: none; padding: 0;">';
+                statusHtml += `<li style="padding: 0.5rem 0;"><strong>Total Q&A Pairs:</strong> <span style="font-size: 1.5rem; color: #1a73e8; font-weight: bold;">${totalPairs}</span></li>`;
+                
+                if (items && items.length > 0) {
+                    let tagCount = new Set();
+                    items.forEach(item => {
+                        if (item.tags) {
+                            item.tags.split(',').forEach(tag => tagCount.add(tag.trim()));
+                        }
+                    });
+                    statusHtml += `<li style="padding: 0.5rem 0;"><strong>Unique Tags:</strong> <span style="font-size: 1.5rem; color: #34a853; font-weight: bold;">${tagCount.size}</span></li>`;
+                } else {
+                    statusHtml += `<li style="padding: 0.5rem 0;"><strong>Unique Tags:</strong> <span style="font-size: 1.5rem; color: #34a853; font-weight: bold;">0</span></li>`;
+                }
+                statusHtml += '</ul>';
+                document.getElementById('qa-status').innerHTML = statusHtml;
+                
+                // Display Q&A list
+                if (items && items.length > 0) {
+                    html = '<table class="qa-table"><thead><tr><th style="width: 30%;">Question</th><th style="width: 40%;">Answer</th><th style="width: 20%;">Tags</th><th style="width: 10%; text-align: right;">Action</th></tr></thead><tbody>';
+                    
+                    items.forEach((item, index) => {
+                        const tags = item.tags ? item.tags.split(',').map(t => t.trim()).filter(t => t) : [];
+                        const tagsHtml = tags.length > 0 
+                            ? tags.map(tag => `<span class="qa-tag">${escapeHtml(tag)}</span>`).join('')
+                            : '<span style="color: var(--color-text-light);">No tags</span>';
+                        
+                        html += `
+                            <tr>
+                                <td>
+                                    <div class="qa-question">${escapeHtml(item.question)}</div>
+                                </td>
+                                <td>
+                                    <div class="qa-answer">${escapeHtml(item.answer)}</div>
+                                </td>
+                                <td>
+                                    <div class="qa-tags">${tagsHtml}</div>
+                                </td>
+                                <td style="text-align: right;">
+                                    <button class="btn btn-sm btn-danger" onclick="deleteQAPair(${item.id}, '${escapeHtml(item.question)}')">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                } else {
+                    html = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>No Q&A pairs yet. Add your first pair above!</p></div>';
+                }
+                document.getElementById('qa-list').innerHTML = html;
+            })
+            .catch(error => {
+                document.getElementById('qa-list').innerHTML = '<p style="color: red; padding: 1rem;">Failed to load knowledge base</p>';
+                document.getElementById('qa-status').innerHTML = '<p style="color: red;">Failed to load status</p>';
+                console.error('Error:', error);
+            });
+    }
+
+    function addQAPair() {
+        const question = document.getElementById('question').value.trim();
+        const answer = document.getElementById('answer').value.trim();
+        const tags = document.getElementById('tags').value.trim();
+
+        if (!question || !answer) {
+            alert('Question and Answer are required');
+            return;
+        }
+
+        document.getElementById('add-status').style.display = 'block';
+        document.getElementById('add-message').innerHTML = '<p style="color: #007bff;">Adding...</p>';
+
+        fetch('http://127.0.0.1:8000/add_knowledge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, answer, tags })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('add-message').innerHTML = '<p style="color: green; margin: 0;"><strong>Success:</strong> Knowledge added!</p>';
+            document.getElementById('question').value = '';
+            document.getElementById('answer').value = '';
+            document.getElementById('tags').value = '';
+            setTimeout(loadKnowledgeBase, 1000);
+            setTimeout(() => {
+                document.getElementById('add-status').style.display = 'none';
+            }, 5000);
+        })
+        .catch(error => {
+            document.getElementById('add-message').innerHTML = `<p style="color: red; margin: 0;"><strong>Error:</strong> ${error.message}</p>`;
+        });
+    }
+
+    function deleteQAPair(id, question) {
+        if (!confirm(`Delete Q&A pair: "${question}"?`)) return;
+
+        fetch(`http://127.0.0.1:8000/knowledge/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert('Q&A pair deleted successfully');
+            loadKnowledgeBase();
+        })
+        .catch(error => alert('Failed to delete: ' + error.message));
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', loadKnowledgeBase);
+</script>
+{% endblock %}
