@@ -65,9 +65,11 @@ class ChromaDBManager:
         try:
             count = self.vectordb._collection.count()
             return {
-                "vector_count": count,
+                "collections": 1,
+                "total_documents": count,
+                "indexed_chunks": count,
                 "model": self.embedding_function.model_name
             }
         except Exception as e:
             print(f"Could not get stats, possibly empty DB: {e}")
-            return {"vector_count": 0, "model": self.embedding_function.model_name}
+            return {"collections": 1, "total_documents": 0, "indexed_chunks": 0, "model": self.embedding_function.model_name}

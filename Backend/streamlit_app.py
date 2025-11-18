@@ -31,7 +31,7 @@ def api_request(endpoint: str, method: str = "GET", data: Optional[Dict] = None,
         if method == "GET":
             return requests.get(url, params=params, stream=stream, timeout=30)
         elif method == "POST":
-            return requests.post(url, json=data, files=files, params=params, stream=stream, timeout=60)
+            return requests.post(url,json=data,files=files,params=params,stream=stream,timeout=60,headers={"Accept": "text/event-stream"})
         elif method == "DELETE":
             return requests.delete(url, params=params, stream=stream, timeout=30)
     except requests.exceptions.RequestException as e:
@@ -224,3 +224,6 @@ with tab4:
 
 st.markdown("---")
 st.caption("© 2025 MITAOE AI Assistant")
+
+
+
