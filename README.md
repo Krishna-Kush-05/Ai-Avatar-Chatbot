@@ -6,7 +6,7 @@ Project Design
 
 <div align="center">
 
-## 🤝 Our Amazing Collaborators
+## 🤝 Collaborators
 
 <table>
   <tr>
