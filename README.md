@@ -3,7 +3,6 @@ Project Design
 
 ---
 
-
 <div align="center">
 
 ## 🤝 Collaborators
