@@ -1,5 +1,6 @@
 # Ai-Avatar-Chatbot
-Project Design
+---
+Minor Project
 
 
 <div align="center">
