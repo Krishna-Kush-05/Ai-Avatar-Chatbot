@@ -1,7 +1,6 @@
 # Ai-Avatar-Chatbot
 Project Design
 
----
 
 <div align="center">
 
