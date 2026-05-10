@@ -1,76 +1,263 @@
 {% extends "app_layout.html" %}
 
 {% block app_content %}
+<style>
+    /* ═══════════════════════════════════════════════════════════════
+   UPLOAD PAGE - Preview Styles
+═══════════════════════════════════════════════════════════════ */
+
+    .upload-container {
+        max-width: 760px;
+        margin: 0 auto;
+        animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .upload-steps {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        font-size: 0.8rem;
+        color: #9ca3af;
+        font-weight: 500;
+    }
+
+    .upload-step {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .upload-step-num {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+
+    .upload-step.done .upload-step-num {
+        background: #10b981;
+        color: white;
+    }
+
+    .upload-step.active .upload-step-num {
+        background: #1e293b;
+        color: white;
+    }
+
+    .step-divider {
+        height: 1px;
+        width: 32px;
+        background: #e5e7eb;
+    }
+
+    /* Preview Box */
+    .upload-preview-box {
+        display: flex;
+        gap: 1.5rem;
+        align-items: flex-start;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .upload-preview-box img {
+        width: 160px;
+        min-width: 160px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        object-fit: cover;
+    }
+
+    .upload-preview-info {
+        flex: 1;
+    }
+
+    .upload-preview-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0 0 0.75rem;
+        word-break: break-word;
+    }
+
+    .upload-meta-row {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .upload-meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .upload-meta-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #9ca3af;
+        font-weight: 600;
+    }
+
+    .upload-meta-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .upload-success-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.3rem 0.75rem;
+        background: #dcfce7;
+        color: #166534;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        margin-top: 0.85rem;
+    }
+
+    .upload-success-badge svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    @media (max-width: 550px) {
+        .upload-preview-box {
+            flex-direction: column;
+        }
+        .upload-preview-box img {
+            width: 100%;
+            min-width: unset;
+        }
+    }
+</style>
+
 <div class="page-header">
     <h1>Upload Knowledge</h1>
     <p>Upload PDF files to an AI Assistant's knowledge base.</p>
 </div>
 
 <div class="upload-container">
+
+    <!-- Progress Steps -->
+    <div class="upload-steps">
+        <div class="upload-step {% if preview_path %}done{% else %}active{% endif %}">
+            <div class="upload-step-num">{% if preview_path %}✓{% else %}1{% endif %}</div>
+            <span>Select & Upload</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="upload-step {% if preview_path %}active{% endif %}">
+            <div class="upload-step-num">2</div>
+            <span>Preview & Confirm</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="upload-step">
+            <div class="upload-step-num">3</div>
+            <span>Done</span>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header">
-            <h3>Upload New File</h3>
+            <h3>{% if preview_path %}Step 2: Preview &amp; Confirm{% else %}Upload New File{% endif %}</h3>
         </div>
-        
-        <!-- Upload Form -->
+
+        {% if not preview_path %}
+        <!-- === STEP 1: Upload Form === -->
         <form action="{{ url_for('preview_pdf') }}" method="POST" enctype="multipart/form-data">
             <div class="card-body">
-                
-                <!-- Step 1: Select Assistant -->
+
                 <div class="form-group">
                     <label for="chatbot_id">Step 1: Select AI Assistant</label>
                     <select name="chatbot_id" id="chatbot_id" class="form-control" required>
                         <option value="" disabled {% if not selected_bot_id %}selected{% endif %}>-- Choose an assistant --</option>
                         {% for bot in bots %}
-                            <option value="{{ bot.id }}" {% if selected_bot_id == bot.id %}selected{% endif %}>
-                                {{ bot.name }}
-                            </option>
+                        <option value="{{ bot.id }}" {% if selected_bot_id == bot.id %}selected{% endif %}>
+                            {{ bot.name }}
+                        </option>
                         {% endfor %}
                     </select>
                     {% if error %}
-                        <div class="form-field-error">{{ error }}</div>
+                    <div class="form-field-error">{{ error }}</div>
                     {% endif %}
                 </div>
-                
-                <!-- Step 2: Upload File -->
+
                 <div class="form-group">
                     <label for="pdf">Step 2: Choose PDF File</label>
                     <input type="file" name="pdf" id="pdf" class="form-control" accept=".pdf" required>
                 </div>
+
             </div>
             <div class="card-footer" style="text-align: right;">
-                <button type="submit" class="btn btn-primary">Generate Preview</button>
+                <button type="submit" class="btn btn-primary">Generate Preview →</button>
             </div>
         </form>
-        
-        <!-- Preview and Confirm Form -->
-        {% if preview_path %}
-        <hr style="border: 0; border-top: 1px solid var(--color-border);">
+
+        {% else %}
+        <!-- === STEP 2: Preview & Confirm === -->
         <form action="{{ url_for('upload_submit') }}" method="POST">
             <div class="card-body">
-                <h3 style="margin-bottom: 1.5rem;">Step 3: Preview & Confirm</h3>
-                
-                <!-- Hidden fields to pass data -->
+
                 <input type="hidden" name="filename" value="{{ filename }}">
                 <input type="hidden" name="filepath" value="{{ filepath }}">
                 <input type="hidden" name="filesize" value="{{ filesize }}">
                 <input type="hidden" name="pages" value="{{ pages }}">
                 <input type="hidden" name="chatbot_id" value="{{ selected_bot_id }}">
-                
+
                 <div class="upload-preview-box">
-                    <img src="{{ preview_path }}" alt="PDF Preview">
-                    <p class="upload-details">
-                        <strong>File:</strong> {{ filename }}<br>
-                        <strong>Size:</strong> {{ filesize }} KB | <strong>Pages:</strong> {{ pages }}
-                    </p>
+                    <img src="{{ preview_path }}" alt="PDF Preview - Page 1">
+                    <div class="upload-preview-info">
+                        <p class="upload-preview-title">{{ filename }}</p>
+                        <div class="upload-meta-row">
+                            <div class="upload-meta-item">
+                                <span class="upload-meta-label">Size</span>
+                                <span class="upload-meta-value">{{ filesize }} KB</span>
+                            </div>
+                            <div class="upload-meta-item">
+                                <span class="upload-meta-label">Pages</span>
+                                <span class="upload-meta-value">{{ pages }}</span>
+                            </div>
+                        </div>
+                        <div class="upload-success-badge">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Indexed by AI backend
+                        </div>
+                    </div>
                 </div>
+
+                <p style="font-size:0.875rem; color:#6b7280; margin:0;">
+                    Review the preview above. Click <strong>Confirm &amp; Save</strong> to link this file to
+                    your assistant's knowledge base, or cancel to upload a different file.
+                </p>
+
             </div>
-            <div class="card-footer" style="text-align: right;">
-                <a href="{{ url_for('upload') }}" class="btn btn-secondary" style="margin-right: 1rem;">Cancel</a>
-                <button type="submit" class="btn btn-primary">Confirm & Upload</button>
+            <div class="card-footer" style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                <a href="{{ url_for('upload') }}" class="btn btn-secondary">← Upload Different File</a>
+                <button type="submit" class="btn btn-primary">Confirm &amp; Save →</button>
             </div>
         </form>
         {% endif %}
+
     </div>
 </div>
 {% endblock %}

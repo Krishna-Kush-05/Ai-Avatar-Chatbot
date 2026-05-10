@@ -1,5 +1,5 @@
 # main.py
-from fastapi import FastAPI, UploadFile, File, Body, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, Body, HTTPException, Query, Form
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -52,7 +52,44 @@ async def root():
 # ======================================================
 # CLEAN & SSE HELPERS
 # ======================================================
+
+def convert_latex_to_text(text: str) -> str:
+    """Convert LaTeX math fragments to readable plain text."""
+    def replace_frac(m):
+        return f'({m.group(1)})/({m.group(2)})'
+    for _ in range(5):
+        text = re.sub(r'\\frac\{([^{}]+)\}\{([^{}]+)\}', replace_frac, text)
+    text = re.sub(r'\|\|([^|]+)\|\|', r'||\1||', text)
+    text = re.sub(r'_\{([^}]+)\}', r'_\1', text)
+    text = re.sub(r'\^\{([^}]+)\}', r'^\1', text)
+    for cmd in ['text', 'mathrm', 'mathbf', 'mathit', 'hat', 'bar', 'tilde', 'vec', 'overline']:
+        text = re.sub(rf'\\{cmd}\{{([^}}]+)\}}', r'\1', text)
+    replacements = {
+        r'\times': 'x', r'\cdot': '.', r'\leq': '<=', r'\geq': '>=',
+        r'\neq': '!=', r'\approx': '~', r'\sum': 'sum', r'\prod': 'product',
+        r'\sqrt': 'sqrt', r'\alpha': 'alpha', r'\beta': 'beta',
+        r'\gamma': 'gamma', r'\delta': 'delta', r'\sigma': 'sigma',
+        r'\mu': 'mu', r'\theta': 'theta', r'\lambda': 'lambda',
+        r'\infty': 'infinity', r'\in': 'in', r'\notin': 'not in',
+        r'\cup': 'union', r'\cap': 'intersection', r'\pm': '+/-',
+        r'\rightarrow': '->', r'\leftarrow': '<-', r'\Rightarrow': '=>',
+        r'\partial': 'd', r'\nabla': 'gradient',
+    }
+    for latex, plain in replacements.items():
+        text = text.replace(latex, plain)
+    text = re.sub(r'\\\[|\\\]', '', text)
+    text = re.sub(r'\$\$([\s\S]*?)\$\$', r'\1', text)
+    text = re.sub(r'\$([^$\n]+)\$', r'\1', text)
+    text = re.sub(r'\\begin\{[^}]+\}|\\end\{[^}]+\}', '', text)
+    text = re.sub(r'\\[a-zA-Z]+\{[^}]*\}', '', text)
+    text = re.sub(r'\\[a-zA-Z]+', '', text)
+    text = text.replace('\\', ' ')
+    text = re.sub(r'  +', ' ', text)
+    return text.strip()
+
+
 def clean_llm_output(text: str) -> str:
+    # Removed convert_latex_to_text(text) to let frontend render math properly
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\s+([,.;!?'\"])", r"\1", text)
     text = re.sub(r"(\w)\s+'\s*(\w)", r"\1'\2", text)
@@ -64,43 +101,38 @@ def format_sse(data: str, event: str):
 
 
 # ======================================================
-# MAIN /query ENDPOINT (WITH Qwen-7B)
+# MAIN /query ENDPOINT
 # ======================================================
 @app.post("/query")
 async def query(payload: Dict[str, Any] = Body(...)):
     question = (payload.get("question") or "").strip().lower()
+    workspace_id = payload.get("workspace_id", "default")
 
     if not question:
         raise HTTPException(400, "Missing question")
 
-    # --------------------------------------------
-    # 1) CACHE CHECK
-    # --------------------------------------------
-    if question in cache:
-        cached = cache[question]
+    # Cache key includes workspace so caches are isolated per teacher
+    cache_key = f"{workspace_id}::{question}"
+    if cache_key in cache:
+        cached = cache[cache_key]
         async def send_cached():
             yield format_sse(cached, "final_response")
         return StreamingResponse(send_cached(), media_type="text/event-stream")
 
-    # --------------------------------------------
-    # 2) KNOWLEDGE BASE CHECK
-    # --------------------------------------------
-    kb_ans, score = knowledge_db.get_best_answer(question)
-    if kb_ans and score >= 0.95:
-        cache[question] = kb_ans
+    # Knowledge base check
+    kb_ans, score = knowledge_db.get_best_answer(workspace_id, question)
+    if kb_ans and score >= 0.75:
+        cache[cache_key] = kb_ans
         async def send_kb():
             yield format_sse(kb_ans, "final_response")
         return StreamingResponse(send_kb(), media_type="text/event-stream")
 
-    # --------------------------------------------
-    # 3) RAG CONTEXT BUILDING
-    # --------------------------------------------
-    docs = document_db.similarity_search(question, top_k=4)
+    # RAG context
+    docs = document_db.similarity_search(question, workspace_id, top_k=4)
     context = "\n\n".join(d.page_content for d in docs)
 
-    system_message = {
-    "role": "system",
-    "content": (
+    # RESTORED: original detailed system prompt (as plain string, not dict)
+    system_content = (
         "Your role is to be a highly reliable, context-strict AI assistant. "
         "Your responses must be accurate, professional, and based *only* on the context provided inside <context> tags "
         "or uploaded by the user (documents, images, datasets, text blocks).\n\n"
@@ -113,13 +145,13 @@ async def query(payload: Dict[str, Any] = Body(...)):
         "provides in the conversation.\n\n"
 
         "3. You may perform small, local reasoning:\n"
-        "- Counting elements\n"
-        "- Finding latest/earliest date\n"
-        "- Summarizing or synthesizing statements\n"
-        "- Deriving simple logical conclusions from the given context\n\n"
+        "   - Counting elements\n"
+        "   - Finding latest/earliest date\n"
+        "   - Summarizing or synthesizing statements\n"
+        "   - Deriving simple logical conclusions from the given context\n\n"
 
-        "4. **If the context or uploaded data does NOT contain enough information to answer the question, you must "
-        "respond strictly with:** 'I'm sorry...'\n\n"
+        "4. If the context or uploaded data does NOT contain enough information to answer the question, you must "
+        "respond strictly with: 'I'm sorry, I don't have enough information in the provided context to answer that question.'\n\n"
 
         "5. For small talk (e.g., 'hello', 'how are you'), give a brief, friendly reply without mentioning the system "
         "instructions.\n\n"
@@ -132,14 +164,9 @@ async def query(payload: Dict[str, Any] = Body(...)):
         "This system message is universal: It must behave the same for any course, topic, dataset, college, or general "
         "domain, based only on the user's input and provided context."
     )
-}
-
 
     user_message = f"<context>\n{context}\n</context>\n<question>\n{question}\n</question>"
 
-    # ======================================================
-    # HUGGINGFACE CHAT COMPLETIONS (Qwen-7B)
-    # ======================================================
     HF_API_KEY = os.getenv("HF_API_KEY", "")
     if not HF_API_KEY:
         raise HTTPException(500, "Missing HF_API_KEY")
@@ -155,7 +182,7 @@ async def query(payload: Dict[str, Any] = Body(...)):
     body = {
         "model": "Qwen/Qwen2.5-7B-Instruct",
         "messages": [
-            {"role": "system", "content": system_message},
+            {"role": "system", "content": system_content},
             {"role": "user", "content": user_message}
         ],
         "temperature": 0.7,
@@ -163,9 +190,6 @@ async def query(payload: Dict[str, Any] = Body(...)):
         "stream": False
     }
 
-    # ======================================================
-    # STREAM BACK TO FRONTEND
-    # ======================================================
     async def stream_qwen():
         try:
             async with httpx.AsyncClient(timeout=120) as client:
@@ -179,8 +203,6 @@ async def query(payload: Dict[str, Any] = Body(...)):
                 return
 
             data = response.json()
-
-            # Extract answer
             answer = (
                 data.get("choices", [{}])[0]
                     .get("message", {})
@@ -193,13 +215,11 @@ async def query(payload: Dict[str, Any] = Body(...)):
 
             answer = clean_llm_output(answer)
 
-            # Stream character by character
             for char in answer:
                 yield format_sse(char, "token")
                 await asyncio.sleep(0.002)
 
-            cache[question] = answer
-            # Send final_response with complete answer only once at the end
+            cache[cache_key] = answer
             yield format_sse(answer, "final_response")
 
         except Exception as e:
@@ -207,15 +227,160 @@ async def query(payload: Dict[str, Any] = Body(...)):
 
     return StreamingResponse(stream_qwen(), media_type="text/event-stream")
 
+# ======================================================
+# NON-STREAM RAG ENDPOINT (FOR EVALUATION ONLY)
+# ======================================================
+@app.post("/query_eval")
+async def query_eval(payload: Dict[str, Any] = Body(...)):
+    question = (payload.get("question") or "").strip().lower()
+    workspace_id = payload.get("workspace_id", "default")
+
+    if not question:
+        raise HTTPException(400, "Missing question")
+
+    # Cache check (same as /query)
+    cache_key = f"{workspace_id}::{question}"
+    if cache_key in cache:
+        return {"answer": cache[cache_key], "source": "cache"}
+
+    # Knowledge base check (same logic)
+    kb_ans, score = knowledge_db.get_best_answer(workspace_id, question)
+    if kb_ans and score >= 0.75:
+        cache[cache_key] = kb_ans
+        return {"answer": kb_ans, "source": "knowledge_base"}
+
+    # RAG retrieval (same logic)
+    docs = document_db.similarity_search(question, workspace_id, top_k=4)
+    context = "\n\n".join(d.page_content for d in docs)
+
+    # 🔴 CRITICAL: No context → no hallucination
+    if not context.strip():
+        return {
+            "answer": "I'm sorry, I don't have enough information in the provided context to answer that question.",
+            "contexts": [],
+            "source": "no_context"
+        }
+
+    # SAME SYSTEM PROMPT (copy-paste exactly)
+    system_content = (
+        "Your role is to be a highly reliable, context-strict AI assistant. "
+        "Your responses must be accurate, professional, and based *only* on the context provided inside <context> tags "
+        "or uploaded by the user (documents, images, datasets, text blocks).\n\n"
+
+        "Follow these rules exactly:\n\n"
+
+        "1. Analyze the user's question inside the <question> tags.\n\n"
+
+        "2. Answer using *only* the information inside the <context> tags OR any data the user explicitly uploads.\n\n"
+
+        "3. You may perform small reasoning (counting, summarizing, logical inference).\n\n"
+
+        "4. If context is insufficient → respond strictly with lack of information.\n\n"
+
+        "5. Format answers clearly using Markdown.\n\n"
+
+        "6. NEVER use external knowledge beyond provided context."
+    )
+
+    user_message = f"<context>\n{context}\n</context>\n<question>\n{question}\n</question>"
+
+    HF_API_KEY = os.getenv("HF_API_KEY", "")
+    if not HF_API_KEY:
+        raise HTTPException(500, "Missing HF_API_KEY")
+
+    HF_URL = "https://router.huggingface.co/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {HF_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    body = {
+        "model": "Qwen/Qwen2.5-7B-Instruct",
+        "messages": [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": user_message}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 300
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            response = await client.post(HF_URL, headers=headers, json=body)
+
+        if response.status_code != 200:
+            raise HTTPException(500, response.text)
+
+        data = response.json()
+        answer = data["choices"][0]["message"]["content"]
+
+        answer = clean_llm_output(answer)
+
+        cache[cache_key] = answer
+
+        return {
+            "answer": answer,
+            "contexts": [d.page_content for d in docs],  # 🔥 REQUIRED FOR RAGAS
+            "source": "rag",
+            "context_used": len(docs)
+        }
+
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 # ======================================================
-# ALL OTHER ENDPOINTS (IDENTICAL TO YOUR ORIGINAL FILE)
+# Qwen endpoint in "baseline" mode for evaluation only
+# ======================================================
+@app.post("/qwen")
+async def qwen_only(payload: Dict[str, Any] = Body(...)):
+    question = (payload.get("question") or "").strip()
+
+    if not question:
+        raise HTTPException(400, "Missing question")
+
+    HF_API_KEY = os.getenv("HF_API_KEY", "")
+    if not HF_API_KEY:
+        raise HTTPException(500, "Missing HF_API_KEY")
+
+    HF_URL = "https://router.huggingface.co/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {HF_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    body = {
+        "model": "Qwen/Qwen2.5-7B-Instruct",
+        "messages": [
+            {"role": "user", "content": question}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 300
+    }
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        response = await client.post(HF_URL, headers=headers, json=body)
+
+    if response.status_code != 200:
+        raise HTTPException(500, response.text)
+
+    data = response.json()
+    answer = data["choices"][0]["message"]["content"]
+
+    return {"answer": answer}
+# ======================================================
+# UPLOAD
 # ======================================================
 @app.post("/upload")
-async def upload(files: List[UploadFile] = File(...)):
+async def upload(
+    files: List[UploadFile] = File(...),
+    workspace_id: str = Form("default")
+):
     chunks = []
     qa_count = 0
-    raw_dir = "./data/raw_docs"
+    raw_dir = f"./data/raw_docs/{workspace_id}"
+    os.makedirs(raw_dir, exist_ok=True)
 
     for file in files:
         dst = os.path.join(raw_dir, file.filename)
@@ -226,55 +391,139 @@ async def upload(files: List[UploadFile] = File(...)):
             with open(dst, encoding="utf-8") as f:
                 text = f.read()
             for q, a in re.findall(r"Q:\s*(.*?)\nA:\s*(.*?)(?:\n{1,}|$)", text, re.DOTALL):
-                knowledge_db.add_qa_pair(q.strip(), a.strip(), "")
+                knowledge_db.add_qa_pair(workspace_id, q.strip(), a.strip(), "")
                 qa_count += 1
 
         chunks.extend(load_and_split(dst))
 
     if chunks:
-        document_db.add_documents(chunks)
+        document_db.add_documents(chunks, workspace_id)
 
-    return {"message": f"Uploaded {len(files)}, indexed {len(chunks)} chunks", "qa_indexed": qa_count}
+    return {
+        "message": f"Uploaded {len(files)} file(s), indexed {len(chunks)} chunks",
+        "qa_indexed": qa_count
+    }
 
 
+# ======================================================
+# DB STATS
+# ======================================================
 @app.get("/db_stats")
-async def stats():
+async def stats(workspace_id: str = Query("default")):
     vect = document_db.get_stats()
+
     with sqlite3.connect("./data/knowledge_base.db") as conn:
-        kb_cnt = conn.execute("SELECT COUNT(*) FROM qa_pairs").fetchone()[0]
+        kb_cnt = conn.execute(
+            "SELECT COUNT(*) FROM qa_pairs WHERE workspace_id = ?", (workspace_id,)
+        ).fetchone()[0]
 
-    raw_files = sorted(os.listdir("./data/raw_docs"))
-    return {"vector_db": vect, "qa_pairs": kb_cnt, "raw_count": len(raw_files), "raw_files": raw_files}
+    raw_base = f"./data/raw_docs/{workspace_id}"
+    raw_files = []
+    if os.path.exists(raw_base):
+        raw_files = [
+            f for f in os.listdir(raw_base)
+            if os.path.isfile(os.path.join(raw_base, f))
+        ]
 
+    unique_docs = document_db.count_unique_sources(workspace_id)
 
-@app.post("/reset_db")
-async def reset_db():
-    document_db.clear_database()
-    chunks = []
-    for fname in os.listdir("./data/raw_docs"):
-        full_path = "./data/raw_docs/" + fname
-        chunks.extend(load_and_split(full_path))
+    return {
+        "vector_db": {
+            "collections": vect.get("collections", 1),
+            "total_documents": unique_docs,
+            "indexed_chunks": vect.get("indexed_chunks", 0),
+            "model": vect.get("model", ""),
+        },
+        "qa_pairs": kb_cnt,
+        "raw_count": len(raw_files),
+        "raw_files": raw_files
+    }
 
-    if chunks:
-        document_db.add_documents(chunks)
-
-    return {"message": "Vector DB reset and re-indexed"}
-
-
-@app.delete("/raw_docs")
-async def delete_raw(filename: str = Query(...)):
-    src = "./data/raw_docs/" + filename
-    if not os.path.exists(src):
-        raise HTTPException(404, "File not found")
-
-    document_db.delete_documents_by_source(src)
-    os.remove(src)
-
-    return {"message": f"Deleted {filename}"}
-
+# ======================================================
+# KNOWLEDGE BASE
+# ======================================================
+@app.get("/knowledge")
+async def get_knowledge(workspace_id: str = Query("default")):
+    return knowledge_db.get_all_qa_pairs(workspace_id)
 
 @app.post("/add_knowledge")
 async def add_knowledge(payload: Dict[str, Any] = Body(...)):
+    workspace_id = payload.get("workspace_id", "default")
+    q = payload.get("question", "").strip()
+    a = payload.get("answer", "").strip()
+    tags = payload.get("tags", "").strip()
+
+    if not q or not a:
+        raise HTTPException(400, "Question and answer are required")
+
+    knowledge_db.add_qa_pair(workspace_id, q, a, tags)
+    return {"message": "Knowledge added"}
+
+@app.delete("/delete_knowledge/{qa_id}")
+async def delete_knowledge(qa_id: int):
+    knowledge_db.delete_qa_pair(qa_id)
+    return {"message": "Deleted"}
+
+
+
+# ======================================================
+# RESET DB
+# ======================================================
+@app.post("/reset_db")
+async def reset_db(workspace_id: str = Query("default")):
+    # Step 1: Delete all vector embeddings for this workspace
+    document_db.clear_workspace(workspace_id)
+
+    # Step 2: Delete all raw files for this workspace
+    raw_dir = f"./data/raw_docs/{workspace_id}"
+    deleted_files = []
+    if os.path.exists(raw_dir):
+        for fname in os.listdir(raw_dir):
+            full_path = os.path.join(raw_dir, fname)
+            if os.path.isfile(full_path):
+                os.remove(full_path)
+                deleted_files.append(fname)
+
+    # Step 3: Delete all Q&A pairs for this workspace and update cache
+    knowledge_db.reset_knowledge_base(workspace_id)
+
+    return {
+        "message": f"Deleted {len(deleted_files)} file(s), all embeddings and Q&A pairs.",
+        "deleted_files": deleted_files
+    }
+
+# ======================================================
+# RAW DOCS
+# ======================================================
+@app.get("/raw_docs")
+async def list_raw_docs(workspace_id: str = Query("default")):
+    base = f"./data/raw_docs/{workspace_id}"
+    if not os.path.exists(base):
+        return []
+    files = [f for f in os.listdir(base) if os.path.isfile(os.path.join(base, f))]
+    return [{"filename": f} for f in files]
+
+
+@app.delete("/raw_docs")
+async def delete_raw(
+    filename: str = Query(...),
+    workspace_id: str = Query("default")
+):
+    src = f"./data/raw_docs/{workspace_id}/{filename}"
+    if not os.path.exists(src):
+        raise HTTPException(404, "File not found")
+
+    document_db.delete_documents_by_source(src, workspace_id)
+    os.remove(src)
+    return {"message": f"Deleted {filename}"}
+
+
+# ======================================================
+# KNOWLEDGE BASE
+# ======================================================
+@app.post("/add_knowledge")
+async def add_knowledge(payload: Dict[str, Any] = Body(...)):
+    workspace_id = payload.get("workspace_id", "default")
     q = payload.get("question")
     a = payload.get("answer")
     t = payload.get("tags")
@@ -282,16 +531,35 @@ async def add_knowledge(payload: Dict[str, Any] = Body(...)):
     if not q or not a:
         raise HTTPException(400, "Missing question or answer")
 
-    knowledge_db.add_qa_pair(q, a, t)
+    knowledge_db.add_qa_pair(workspace_id, q, a, t)
     return {"message": "Knowledge added"}
 
 
 @app.get("/knowledge")
-async def list_kb():
-    return knowledge_db.get_all_qa_pairs()
+async def list_kb(workspace_id: str = Query("default")):
+    return knowledge_db.get_all_qa_pairs(workspace_id)
 
 
 @app.delete("/knowledge/{id}")
 async def delete_kb(id: int):
     knowledge_db.delete_qa_pair(id)
     return {"message": "Deleted"}
+
+
+# ======================================================
+# WEB SCRAPER
+# ======================================================
+from app.utils.web_ingest import ingest_website
+
+@app.post("/ingest/website")
+def ingest_website_api(data: dict = Body(...)):
+    url = data.get("url")
+    workspace_id = data.get("workspace_id", "default")
+    if not url:
+        return {"error": "URL is required"}
+
+    try:
+        result = ingest_website(url, workspace_id)
+        return result
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

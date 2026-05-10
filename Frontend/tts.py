@@ -1,27 +1,29 @@
 # tts.py
+# ─────────────────────────────────────────────────────────────
+# Dual TTS system
+#   Primary  → ElevenLabs  (high quality, needs ELEVENLABS_API_KEY)
+#                           Handled inline in app.py /speak route.
+#   Fallback → gTTS         (free, no API key needed)
+#                           This module implements the gTTS fallback.
+# ─────────────────────────────────────────────────────────────
 import os
-from elevenlabs.client import ElevenLabs
+from gtts import gTTS
 
-api_key = "set_api"
 
-# Initialize ElevenLabs client
-client = ElevenLabs(api_key=api_key)
+def generate_audio(text: str, output_path: str = "static/audio/output.mp3"):
+    """
+    Generate speech audio using gTTS (Google Text-to-Speech).
 
-def generate_audio(text, output_path="static/audio/output.mp3"):
+    Called by the Flask /speak route when ElevenLabs is unavailable
+    or returns an error.  Cache-busting is handled by the caller.
+
+    Returns output_path on success, None on failure.
+    """
     try:
-        audio = client.text_to_speech.convert(
-            voice_id="JBFqnCBsd6RMkjVDRZzb",  # George
-            text=text,
-            model_id="eleven_monolingual_v1"
-        )
-
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-        with open(output_path, "wb") as f:
-            for chunk in audio:
-                f.write(chunk)
-
+        tts = gTTS(text=text, lang="en", slow=False)
+        tts.save(output_path)
         return output_path
     except Exception as e:
-        print("TTS Error:", e)
+        print(f"[gTTS fallback] Error: {e}")
         return None

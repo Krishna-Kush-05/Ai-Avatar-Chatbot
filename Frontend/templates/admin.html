@@ -1,44 +1,590 @@
 {% extends "app_layout.html" %}
 
 {% block app_content %}
-<div class="page-header">
-    <h1>Admin Tools</h1>
-    <p>Manage and maintain your knowledge database.</p>
-</div>
+<style>
+    /* ═══════════════════════════════════════════════════════════════
+   ADMIN PAGE - Modern Design
+═══════════════════════════════════════════════════════════════ */
 
-<div class="main-content-grid">
-    <!-- Admin Actions -->
-    <div class="main-column">
-        <div class="card">
-            <div class="card-header" style="background-color: #fee; border-bottom: 2px solid #f44;">
-                <h3 style="color: #c00; margin: 0;">Danger Zone</h3>
+    .admin-page {
+        animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Page Header */
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .page-header-icon {
+        width: 52px;
+        height: 52px;
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .page-header-icon svg {
+        width: 26px;
+        height: 26px;
+        color: #d97706;
+    }
+
+    .page-header h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0 0 0.25rem;
+    }
+
+    .page-header p {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin: 0;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stat-icon svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .stat-icon.collections {
+        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    }
+
+    .stat-icon.collections svg {
+        color: #2563eb;
+    }
+
+    .stat-icon.documents {
+        background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    }
+
+    .stat-icon.documents svg {
+        color: #10b981;
+    }
+
+    .stat-icon.chunks {
+        background: linear-gradient(135deg, #f5f3ff, #ddd6fe);
+    }
+
+    .stat-icon.chunks svg {
+        color: #7c3aed;
+    }
+
+    .stat-icon.qa {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+    }
+
+    .stat-icon.qa svg {
+        color: #d97706;
+    }
+
+    .stat-icon.files {
+        background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+    }
+
+    .stat-icon.files svg {
+        color: #db2777;
+    }
+
+    .stat-info {
+        flex: 1;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    /* Main Grid */
+    .admin-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.25rem;
+    }
+
+    /* Cards */
+    .admin-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .card-header svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .card-header h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .card-body {
+        padding: 1.25rem;
+    }
+
+    .card-footer {
+        padding: 1rem 1.25rem;
+        border-top: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+
+    /* Danger Zone */
+    .danger-card {
+        border-color: #fecaca;
+    }
+
+    .danger-header {
+        background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    }
+
+    .danger-header svg {
+        color: #dc2626;
+    }
+
+    .danger-header h3 {
+        color: #b91c1c;
+    }
+
+    .danger-warning {
+        display: flex;
+        align-items: start;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: #fef2f2;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+
+    .danger-warning-icon {
+        width: 36px;
+        height: 36px;
+        background: #fecaca;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .danger-warning-icon svg {
+        width: 18px;
+        height: 18px;
+        color: #dc2626;
+    }
+
+    .danger-warning-text {
+        font-size: 0.85rem;
+        color: #b91c1c;
+        line-height: 1.5;
+    }
+
+    .danger-warning-text strong {
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .btn-danger {
+        width: 100%;
+        padding: 0.85rem 1.25rem;
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .btn-danger:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+    }
+
+    .btn-danger svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Actions Card */
+    .actions-header {
+        background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    }
+
+    .actions-header svg {
+        color: #2563eb;
+    }
+
+    .actions-header h3 {
+        color: #1e40af;
+    }
+
+    .action-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .action-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 10px;
+        transition: all 0.15s;
+    }
+
+    .action-item:hover {
+        background: #f3f4f6;
+    }
+
+    .action-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .action-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .action-icon.green {
+        background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    }
+
+    .action-icon.green svg {
+        color: #10b981;
+    }
+
+    .action-icon.blue {
+        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    }
+
+    .action-icon.blue svg {
+        color: #2563eb;
+    }
+
+    .action-info {
+        flex: 1;
+    }
+
+    .action-title {
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+
+    .action-desc {
+        font-size: 0.78rem;
+        color: #6b7280;
+    }
+
+    .action-btn {
+        padding: 0.5rem 1rem;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .action-btn:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+    }
+
+    /* Status Alert */
+    .alert {
+        padding: 0.85rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        display: none;
+    }
+
+    .alert.show {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .alert.success {
+        background: #ecfdf5;
+        border: 1px solid #d1fae5;
+        color: #059669;
+    }
+
+    .alert.error {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #dc2626;
+    }
+
+    .alert.loading {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #2563eb;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .admin-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+
+<div class="admin-page">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+            </svg>
+        </div>
+        <div>
+            <h1>Admin Tools</h1>
+            <p>Manage and maintain your knowledge database</p>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon collections">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <ellipse cx="12" cy="5" rx="9" ry="3" />
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                </svg>
             </div>
-            <div class="card-body">
-                <p>These actions are irreversible and will delete data from the vector database.</p>
-                <div style="margin-top: 1rem;">
-                    <button class="btn btn-danger" onclick="resetDatabase()" style="padding: 0.75rem 1.5rem; font-size: 1rem;">Reset Document Database</button>
-                </div>
+            <div class="stat-info">
+                <div class="stat-value" id="stat-collections">-</div>
+                <div class="stat-label">Collections</div>
             </div>
         </div>
-
-        <!-- Action Status -->
-        <div id="action-status" style="display:none;">
-            <div class="card">
-                <div class="card-body">
-                    <div id="action-message" class="alert"></div>
-                </div>
+        <div class="stat-card">
+            <div class="stat-icon documents">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                </svg>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value" id="stat-documents">-</div>
+                <div class="stat-label">Documents</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon chunks">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                </svg>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value" id="stat-chunks">-</div>
+                <div class="stat-label">Indexed Chunks</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon qa">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value" id="stat-qa">-</div>
+                <div class="stat-label">Q&A Pairs</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon files">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value" id="stat-files">-</div>
+                <div class="stat-label">Raw Files</div>
             </div>
         </div>
     </div>
 
-    <!-- System Information -->
-    <div class="sidebar-column">
-        <div class="card">
-            <div class="card-header">
-                <h3>System Information</h3>
+    <!-- Main Grid -->
+    <div class="admin-grid">
+
+        <!-- Danger Zone -->
+        <div class="admin-card danger-card">
+            <div class="card-header danger-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path
+                        d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                <h3>Danger Zone</h3>
             </div>
-            <div class="card-body" id="system-info">
-                <p style="color: var(--color-text-light);">Loading...</p>
+            <div class="card-body">
+                <div class="danger-warning">
+                    <div class="danger-warning-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                    </div>
+                    <div class="danger-warning-text">
+                        <strong>Warning: Irreversible Action</strong>
+                        This will permanently delete all uploaded files, vector embeddings, and Q&amp;A pairs
+                        for your workspace. This is a full wipe — not a re-index. This cannot be undone.
+                    </div>
+                </div>
+
+                <div class="alert" id="action-status"></div>
+
+                <button class="btn-danger" onclick="resetDatabase()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10" />
+                        <polyline points="1 20 1 14 7 14" />
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    </svg>
+                    Reset Document Database
+                </button>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="admin-card">
+            <div class="card-header actions-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+                <h3>Quick Actions</h3>
+            </div>
+            <div class="card-body">
+                <div class="action-list">
+                    <div class="action-item">
+                        <div class="action-icon green">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10" />
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                            </svg>
+                        </div>
+                        <div class="action-info">
+                            <div class="action-title">Refresh Stats</div>
+                            <div class="action-desc">Reload database statistics</div>
+                        </div>
+                        <button class="action-btn" onclick="loadSystemInfo()">Refresh</button>
+                    </div>
+                    <div class="action-item">
+                        <div class="action-icon blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                        </div>
+                        <div class="action-info">
+                            <div class="action-title">Upload Documents</div>
+                            <div class="action-desc">Go to document upload</div>
+                        </div>
+                        <a href="{{ url_for('resources') }}" class="action-btn">Go</a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -46,58 +592,49 @@
 
 <script>
     function loadSystemInfo() {
-        fetch('http://127.0.0.1:8000/db_stats')
+        // Uses Flask proxy /api/db_stats — workspace_id injected server-side
+        fetch('/api/db_stats')
             .then(response => response.json())
             .then(data => {
-                let html = '<ul style="list-style: none; padding: 0;">';
-                
-                if (data.vector_db) {
-                    html += `<li><strong>Collections:</strong> ${data.vector_db.collections || 0}</li>`;
-                    html += `<li><strong>Total Documents:</strong> ${data.vector_db.total_documents || 0}</li>`;
-                    html += `<li><strong>Indexed Chunks:</strong> ${data.vector_db.indexed_chunks || 0}</li>`;
-                }
-                
-                html += `<li><strong>Q&A Pairs:</strong> ${data.qa_pairs || 0}</li>`;
-                html += `<li><strong>Raw Files:</strong> ${data.raw_count || 0}</li>`;
-                
-                html += '</ul>';
-                document.getElementById('system-info').innerHTML = html;
+                document.getElementById('stat-collections').textContent = data.vector_db?.collections || 0;
+                document.getElementById('stat-documents').textContent = data.vector_db?.total_documents || 0;
+                document.getElementById('stat-chunks').textContent = data.vector_db?.indexed_chunks || 0;
+                document.getElementById('stat-qa').textContent = data.qa_pairs || 0;
+                document.getElementById('stat-files').textContent = data.raw_count || 0;
             })
             .catch(error => {
-                document.getElementById('system-info').innerHTML = '<p style="color: red;">Failed to load system info</p>';
-                console.error('Error:', error);
+                console.error('Stats error:', error);
             });
     }
 
     function resetDatabase() {
-        if (!confirm('⚠️ This will reset the entire vector database and re-index all documents. Are you sure?')) {
+        if (!confirm('⚠️ This will permanently delete all files, embeddings, and Q&A pairs for your workspace. Are you absolutely sure?')) {
             return;
         }
-        
-        if (!confirm('This action is IRREVERSIBLE. Continue?')) {
+        if (!confirm('This action is IRREVERSIBLE. Click OK to proceed.')) {
             return;
         }
 
-        document.getElementById('action-status').style.display = 'block';
-        document.getElementById('action-message').innerHTML = '<p style="color: #007bff;">Resetting database...</p>';
+        const statusEl = document.getElementById('action-status');
+        statusEl.className = 'alert show loading';
+        statusEl.textContent = '⏳ Resetting database…';
 
-        fetch('http://127.0.0.1:8000/reset_db', {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('action-message').innerHTML = `<p style="color: green; margin: 0;"><strong>✓ Success:</strong> ${data.message}</p>`;
-            setTimeout(loadSystemInfo, 1000);
-            setTimeout(() => {
-                document.getElementById('action-status').style.display = 'none';
-            }, 5000);
-        })
-        .catch(error => {
-            document.getElementById('action-message').innerHTML = `<p style="color: red; margin: 0;"><strong>✗ Error:</strong> ${error.message}</p>`;
-        });
+        // Uses Flask proxy /api/reset_db — workspace_id injected server-side
+        // This DELETES files + embeddings + Q&A — it is NOT a re-index.
+        fetch('/api/reset_db', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                statusEl.className = 'alert show success';
+                statusEl.textContent = '✓ ' + (data.message || 'Database reset successfully.');
+                setTimeout(loadSystemInfo, 1000);
+                setTimeout(() => { statusEl.classList.remove('show'); }, 5000);
+            })
+            .catch(error => {
+                statusEl.className = 'alert show error';
+                statusEl.textContent = '✗ ' + error.message;
+            });
     }
 
-    // Load on page load
     document.addEventListener('DOMContentLoaded', loadSystemInfo);
 </script>
 {% endblock %}
