@@ -1,112 +1,200 @@
-# Ai-Avatar-Chatbot
+# 🤖 AI Avatar Chatbot
 
-Minor Project
+An AI-powered RAG (Retrieval-Augmented Generation) chatbot that answers user queries using uploaded documents and scraped website content instead of relying solely on pretrained LLM knowledge.
 
 ---
-<div align="center">
 
-## 🤝 Collaborators
+## 📌 Overview
 
-<table>
-  <tr>
-    <td align="center" width="200px">
-      <a href="#">
-        <img src="https://via.placeholder.com/120?text=Manmath" width="120px;" style="border-radius: 50%; border: 3px solid #4A90E2;" alt="Manmath Kornule"/>
-      </a>
-      <br />
-      <br />
-      <a href="#">
-        <img src="https://img.shields.io/badge/Manmath_Kornule-Lead_Developer-4A90E2?style=for-the-badge&logo=github&logoColor=white" alt="Manmath Kornule"/>
-      </a>
-      <br />
-      <br />
-      <a href="#">
-        <img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" alt="GitHub"/>
-      </a>
-      <a href="#">
-        <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" alt="LinkedIn"/>
-      </a>
-      <a href="#">
-        <img src="https://img.shields.io/badge/Email-D14836?style=flat&logo=gmail&logoColor=white" alt="Email"/>
-      </a>
-      <br />
-      <sub>💻 Core · 🏗️ Architecture · 🤝 Team Lead</sub>
-    </td>
-    <td align="center" width="200px">
-      <a href="#">
-        <img src="https://via.placeholder.com/120?text=Krishna" width="120px;" style="border-radius: 50%; border: 3px solid #4A90E2;" alt="Krishna Kushwah"/>
-      </a>
-      <br />
-      <br />
-      <a href="#">
-        <img src="https://img.shields.io/badge/Krishna_Kushwah-Lead_Developer-4A90E2?style=for-the-badge&logo=github&logoColor=white" alt="Krishna Kushwah"/>
-      </a>
-      <br />
-      <br />
-      <a href="#">
-        <img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" alt="GitHub"/>
-      </a>
-      <a href="#">
-        <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" alt="LinkedIn"/>
-      </a>
-      <a href="#">
-        <img src="https://img.shields.io/badge/Email-D14836?style=flat&logo=gmail&logoColor=white" alt="Email"/>
-      </a>
-      <br />
-      <sub>💻 Core · 🎨 Design · 🧠 AI Logic</sub>
-    </td>
-  </tr>
-  
-  <tr>
-    <td align="center" width="200px">
-      <a href="#">
-        <img src="https://via.placeholder.com/120?text=Vishal" width="120px;" style="border-radius: 50%; border: 3px solid #50C878;" alt="Vishal Shende"/>
-      </a>
-      <br />
-      <br />
-      <a href="#">
-        <img src="https://img.shields.io/badge/Vishal_Shende-Frontend_Expert-50C878?style=for-the-badge&logo=github&logoColor=white" alt="Vishal Shende"/>
-      </a>
-      <br />
-      <br />
-      <a href="#">
-        <img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" alt="GitHub"/>
-      </a>
-      <a href="#">
-        <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" alt="LinkedIn"/>
-      </a>
-      <a href="#">
-        <img src="https://img.shields.io/badge/Email-D14836?style=flat&logo=gmail&logoColor=white" alt="Email"/>
-      </a>
-      <br />
-      <sub>🎨 UI/UX · 💡 Ideas · 🚀 Features</sub>
-    </td>
-    <td align="center" width="200px">
-      <a href="#">
-        <img src="https://via.placeholder.com/120?text=Pratik" width="120px;" style="border-radius: 50%; border: 3px solid #FF6B6B;" alt="Pratik Mane"/>
-      </a>
-      <br />
-      <br />
-      <a href="#">
-        <img src="https://img.shields.io/badge/Pratik_Mane-DevOps_Engineer-FF6B6B?style=for-the-badge&logo=github&logoColor=white" alt="Pratik Mane"/>
-      </a>
-      <br />
-      <br />
-      <a href="#">
-        <img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" alt="GitHub"/>
-      </a>
-      <a href="#">
-        <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" alt="LinkedIn"/>
-      </a>
-      <a href="#">
-        <img src="https://img.shields.io/badge/Email-D14836?style=flat&logo=gmail&logoColor=white" alt="Email"/>
-      </a>
-      <br />
-      <sub>🔧 DevOps · ⚡ CI/CD · 🐛 Testing</sub>
-    </td>
-  </tr>
-</table>
+AI Avatar Chatbot is designed to provide accurate, context-aware responses by combining Large Language Models (LLMs) with semantic search and document retrieval techniques.
 
-</div>
+The system supports document ingestion, website scraping, vector embeddings, and intelligent response generation through a modern web interface.
+
+---
+
+# 🚀 Features
+
+* 📄 PDF & document ingestion
+* 🌐 Website scraping and indexing
+* 🧠 Retrieval-Augmented Generation (RAG)
+* 🔍 Semantic search with vector embeddings
+* 🗂️ ChromaDB vector database integration
+* 🤖 Qwen LLM integration
+* ⚡ FastAPI backend services
+* 🎨 Streamlit frontend dashboard
+* 📊 Evaluation & benchmarking system
+* 📈 RAG vs Qwen response comparison
+
+---
+
+# 🏗️ Tech Stack
+
+| Technology             | Purpose            |
+| ---------------------- | ------------------ |
+| FastAPI                | Backend API        |
+| Streamlit              | Frontend Dashboard |
+| ChromaDB               | Vector Database    |
+| HuggingFace Embeddings | Text Embeddings    |
+| Qwen LLM               | Language Model     |
+| SentenceTransformers   | Semantic Search    |
+
+---
+
+# 📂 Project Structure
+
+```text
+AI_Avatar_chatbot/
+│
+├── Backend/
+│   ├── app/
+│   ├── data/
+│   ├── evaluation/
+│   ├── requirements.txt
+│   └── streamlit_app.py
+│
+└── Frontend/
+```
+
+---
+
+# ⚙️ Installation
+
+## 1️⃣ Clone the Repository
+
+```bash
+git clone https://github.com/Krishna-Kush-05/Ai-Avatar-Chatbot.git
+cd Ai-Avatar-Chatbot/Backend
+```
+
+---
+
+## 2️⃣ Create Virtual Environment
+
+### Windows
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+### Linux / macOS
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+---
+
+## 3️⃣ Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# ▶️ Running the Application
+
+## Start Backend Server
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Backend URL:
+
+```text
+http://127.0.0.1:8000
+```
+
+---
+
+## Start Frontend
+
+```bash
+streamlit run streamlit_app.py
+```
+
+Frontend URL:
+
+```text
+http://localhost:8501
+```
+
+---
+
+# 📄 Supported Document Formats
+
+* PDF
+* TXT
+* DOCX
+* Markdown (MD)
+
+---
+
+# 🌐 Website Ingestion
+
+Example URL:
+
+```text
+https://mitaoe.ac.in/
+```
+
+The chatbot can scrape and index website content for semantic retrieval.
+
+---
+
+# 📊 Evaluation System
+
+Run evaluation:
+
+```bash
+python evaluation/evaluator.py
+```
+
+### Metrics Used
+
+* ✅ Answer Correctness
+* ✅ Context Relevance
+* ✅ Faithfulness
+* ✅ Response Latency
+
+---
+
+# 🧠 Research Objectives
+
+This project focuses on:
+
+* Retrieval-Augmented Generation (RAG)
+* Reducing AI hallucinations
+* Domain-specific AI assistants
+* Semantic retrieval systems
+* Response evaluation and benchmarking
+
+---
+
+# 🤝 Contributors
+
+| Name            | Role                          |
+| --------------- | ----------------------------- |
+| Krishna Kushwah | AI Logic, Backend Development |
+| Manmath Kornule | Architecture, Team Lead       |
+| Vishal Shende   | UI/UX & Frontend              |
+| Pratik Mane     | DevOps & Testing              |
+
+---
+
+# 📜 License
+
+This project is developed for academic and research purposes.
+
+---
+
+# 👨‍💻 Author
+
+**Krishna Kushwah**
+
+* GitHub: https://github.com/Krishna-Kush-05
 
 ---
