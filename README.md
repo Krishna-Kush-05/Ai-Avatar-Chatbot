@@ -40,53 +40,43 @@ The system supports document ingestion, website scraping, vector embeddings, and
 
 ---
 
-# 📂 Project Structure
-
-```text
-AI_Avatar_chatbot/
-│
-├── Backend/
-│   ├── app/
-│   ├── data/
-│   ├── evaluation/
-│   ├── requirements.txt
-│   └── streamlit_app.py
-│
-└── Frontend/
-```
-
----
-
 # ⚙️ Installation
 
-## 1️⃣ Clone the Repository
+## 1️⃣ Clone Repository
 
 ```bash
 git clone https://github.com/Krishna-Kush-05/Ai-Avatar-Chatbot.git
-cd Ai-Avatar-Chatbot/Backend
+cd Ai-Avatar-Chatbot
 ```
 
 ---
 
-## 2️⃣ Create Virtual Environment
+# 🖥️ Backend Setup
 
-### Windows
+## Create Backend Virtual Environment
 
 ```bash
+cd Backend
 python -m venv .venv
+```
+
+### Activate Environment
+
+#### Windows
+
+```bash
 .venv\Scripts\activate
 ```
 
-### Linux / macOS
+#### Linux / macOS
 
 ```bash
-python3 -m venv .venv
 source .venv/bin/activate
 ```
 
 ---
 
-## 3️⃣ Install Dependencies
+## Install Backend Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -94,9 +84,7 @@ pip install -r requirements.txt
 
 ---
 
-# ▶️ Running the Application
-
-## Start Backend Server
+## Run Backend Server
 
 ```bash
 uvicorn app.main:app --reload
@@ -110,7 +98,46 @@ http://127.0.0.1:8000
 
 ---
 
-## Start Frontend
+# 🎨 Frontend Setup
+
+## Create Frontend Virtual Environment
+
+```bash
+cd ../Frontend
+python -m venv venv
+```
+
+### Activate Environment
+
+#### Windows
+
+```bash
+venv\Scripts\activate
+```
+
+#### Linux / macOS
+
+```bash
+source venv/bin/activate
+```
+
+---
+
+## Install Frontend Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Run Frontend
+
+```bash
+python app.py
+```
+
+OR
 
 ```bash
 streamlit run streamlit_app.py
@@ -119,8 +146,45 @@ streamlit run streamlit_app.py
 Frontend URL:
 
 ```text
-http://localhost:8501
+http://localhost:5000
 ```
+
+---
+
+# 📂 Recommended Project Structure
+
+```text
+Ai-Avatar-Chatbot/
+│
+├── Backend/
+│   ├── .venv/
+│   ├── app/
+│   ├── requirements.txt
+│   └── streamlit_app.py
+│
+├── Frontend/
+│   ├── venv/
+│   ├── requirements.txt
+│   └── app.py
+│
+├── .gitignore
+└── README.md
+```
+
+---
+
+# 🚫 Virtual Environments are Ignored
+
+The project already ignores virtual environments using `.gitignore`:
+
+```gitignore
+venv/
+.venv/
+env/
+.env
+```
+
+So backend and frontend environments will NOT be uploaded to GitHub.
 
 ---
 
