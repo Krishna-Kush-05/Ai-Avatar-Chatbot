@@ -315,7 +315,7 @@ function handleStream(prompt) {
                                     let splitIndex = newText.lastIndexOf(lastMatch) + lastMatch.length;
                                     let sentence = newText.substring(0, splitIndex);
                                     spokenLength += splitIndex;
-                                    
+
                                     let speechChunk = sentence
                                         .replace(/```[\s\S]*?(```|$)/g, " ")
                                         .replace(/`[^`]+`/g, "")
@@ -472,16 +472,16 @@ function speak(text) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text })
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.audio_url) {
-            window.audioQueue.push(data.audio_url);
-            if (!window.isPlayingQueue) {
-                playNextInQueue();
+        .then(res => res.json())
+        .then(data => {
+            if (data.audio_url) {
+                window.audioQueue.push(data.audio_url);
+                if (!window.isPlayingQueue) {
+                    playNextInQueue();
+                }
             }
-        }
-    })
-    .catch(err => {
-        console.error("TTS Error:", err);
-    });
+        })
+        .catch(err => {
+            console.error("TTS Error:", err);
+        });
 }

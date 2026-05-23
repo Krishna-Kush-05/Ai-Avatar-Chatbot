@@ -1,0 +1,167 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to AI Avatar Chatbot</title>
+        <style>
+            body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                background-color: #f3f4f6;
+                margin: 0;
+                padding: 0;
+                -webkit-font-smoothing: antialiased;
+            }
+            .container {
+                max-width: 600px;
+                margin: 40px auto;
+                background-color: #ffffff;
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+                border: 1px solid #e5e7eb;
+            }
+            .header {
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                padding: 40px 30px;
+                text-align: center;
+                color: #ffffff;
+            }
+            .logo-text {
+                font-size: 24px;
+                font-weight: 800;
+                letter-spacing: -0.03em;
+                margin: 0 0 10px 0;
+            }
+            .subtitle {
+                font-size: 16px;
+                opacity: 0.9;
+                margin: 0;
+            }
+            .content {
+                padding: 40px 30px;
+                color: #374151;
+                line-height: 1.6;
+            }
+            .greeting {
+                font-size: 18px;
+                font-weight: 700;
+                margin-top: 0;
+                margin-bottom: 20px;
+                color: #111827;
+            }
+            .inviter-box {
+                background-color: #f0fdf4;
+                border-left: 4px solid #10b981;
+                padding: 15px 20px;
+                border-radius: 4px 8px 8px 4px;
+                margin-bottom: 30px;
+                font-weight: 500;
+                color: #065f46;
+            }
+            .features {
+                display: grid;
+                gap: 15px;
+                margin-bottom: 35px;
+            }
+            .feature-item {
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                background-color: #fafafa;
+                padding: 12px 16px;
+                border-radius: 8px;
+                border: 1px solid #f3f4f6;
+            }
+            .feature-icon {
+                font-size: 20px;
+                flex-shrink: 0;
+            }
+            .feature-text strong {
+                color: #111827;
+            }
+            .cta-container {
+                text-align: center;
+                margin: 35px 0;
+            }
+            .btn-primary {
+                display: inline-block;
+                padding: 14px 30px;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: #ffffff !important;
+                text-decoration: none;
+                border-radius: 10px;
+                font-weight: 600;
+                font-size: 16px;
+                box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .footer {
+                background-color: #f9fafb;
+                padding: 20px 30px;
+                text-align: center;
+                font-size: 12px;
+                color: #9ca3af;
+                border-top: 1px solid #f3f4f6;
+            }
+            .footer a {
+                color: #10b981;
+                text-decoration: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo-text">AI AVATAR CHATBOT</div>
+                <p class="subtitle">Classroom Learning Platform</p>
+            </div>
+            
+            <div class="content">
+                <p class="greeting">Hello!</p>
+                
+                <div class="inviter-box">
+                    <strong>mahesh</strong> has invited you to join their AI Avatar Chatbot classroom at MIT Academy of Engineering as a Student.
+                </div>
+                
+                <p>Once you register, you will get access to:</p>
+                
+                <div class="features">
+                    <div class="feature-item">
+                        <span class="feature-icon">🤖</span>
+                        <div class="feature-text">
+                            <strong>Interactive AI Avatars:</strong> Engage with customized chatbot avatars built by your teacher specifically for your course material.
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎙️</span>
+                        <div class="feature-text">
+                            <strong>Speech & Audio capabilities:</strong> Speak directly to your avatars and listen to high-quality audio responses.
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📁</span>
+                        <div class="feature-text">
+                            <strong>Shared Knowledge Hub:</strong> Study uploaded documents, websites, and reference materials curated for your learning.
+                        </div>
+                    </div>
+                </div>
+                
+                <p>Click the button below to accept your invitation, set up your account password, and get started:</p>
+                
+                <div class="cta-container">
+                    <a href="http://127.0.0.1:5000/register?role=student&email=jane.doe@example.com" class="btn-primary">Register & Join Classroom</a>
+                </div>
+                
+                <p>Please register using your email address: <strong>jane.doe@example.com</strong></p>
+            </div>
+            
+            <div class="footer">
+                <p>If you did not expect this invitation, you can safely ignore this email.</p>
+                <p>&copy; 2026 AI Avatar Chatbot. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    

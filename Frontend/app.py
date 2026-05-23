@@ -10,6 +10,17 @@ from tts import generate_audio
 import requests
 from flask_cors import CORS
 
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# Email service import
+from email_service import send_onboarding_email
+
+
 # --- NEW IMPORTS FOR AUTH & FORMS ---
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, HiddenField, TextAreaField, SelectField
@@ -218,6 +229,11 @@ def register():
     role = request.args.get('role', 'student')
     form.role.data = role
 
+    # Prefill email if provided in request args (e.g. from invitation link)
+    email = request.args.get('email', '')
+    if email and request.method == 'GET':
+        form.email.data = email
+
     return render_template('register.html', title='Register', form=form, role=role.title())
 
 @app.route("/login", methods=['GET', 'POST'])
@@ -335,7 +351,27 @@ def students():
         )
         db.session.add(invite_placeholder)
         db.session.commit()
-        flash(f'Invitation sent to {student_email}. They can now register using this email.', 'success')
+
+        # Send onboarding email to the student
+        try:
+            registration_url = url_for('register', role='student', email=student_email, _external=True)
+            inviter_name = current_user.get_display_name()
+            inviter_institution = current_user.institution
+            
+            email_sent = send_onboarding_email(
+                recipient_email=student_email,
+                inviter_name=inviter_name,
+                inviter_institution=inviter_institution,
+                registration_url=registration_url
+            )
+            if email_sent:
+                flash(f'Invitation sent to {student_email}. An onboarding email has been sent successfully.', 'success')
+            else:
+                flash(f'Invitation saved for {student_email}, but we failed to send the onboarding email. Please check SMTP logs.', 'warning')
+        except Exception as e:
+            print(f"[ERROR] Failed to send invitation email: {e}")
+            flash(f'Invitation saved for {student_email}, but email sending failed: {str(e)}', 'warning')
+
         return redirect(url_for('students'))
 
     invited_students = current_user.invited_users_placeholders.filter_by(role='student_invited').all()
