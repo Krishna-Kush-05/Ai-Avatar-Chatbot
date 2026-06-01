@@ -357,7 +357,7 @@ def students():
             registration_url = url_for('register', role='student', email=student_email, _external=True)
             inviter_name = current_user.get_display_name()
             inviter_institution = current_user.institution
-            
+
             email_sent = send_onboarding_email(
                 recipient_email=student_email,
                 inviter_name=inviter_name,

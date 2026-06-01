@@ -1,16 +1,41 @@
-<!-- templates/upload_base.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}Upload PDF{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>{% block title %}Upload Files{% endblock %}</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f8fafc;
+            font-family: Inter, sans-serif;
+        }
+
+        .upload-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+    </style>
+
+    {% block head %}{% endblock %}
 </head>
+
 <body>
-  <div class="upload-container">
+
+<div class="upload-container">
     {% block content %}{% endblock %}
-  </div>
-  {% block scripts %}{% endblock %}
+</div>
+
+{% block scripts %}{% endblock %}
+
 </body>
 </html>

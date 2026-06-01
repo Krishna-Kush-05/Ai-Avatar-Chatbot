@@ -161,6 +161,9 @@ async def query(payload: Dict[str, Any] = Body(...)):
         "7. You must never use prior knowledge, external facts, or assumptions beyond the provided context or uploaded "
         "content.\n\n"
 
+        "8. Keep responses under 200 words. "
+        "Prefer short, direct answers with minimal explanation.\n\n"
+
         "This system message is universal: It must behave the same for any course, topic, dataset, college, or general "
         "domain, based only on the user's input and provided context."
     )
@@ -185,8 +188,8 @@ async def query(payload: Dict[str, Any] = Body(...)):
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_message}
         ],
-        "temperature": 0.7,
-        "max_tokens": 300,
+        "temperature": 0.5,
+        "max_tokens": 250,
         "stream": False
     }
 
@@ -301,8 +304,8 @@ async def query_eval(payload: Dict[str, Any] = Body(...)):
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_message}
         ],
-        "temperature": 0.7,
-        "max_tokens": 300
+        "temperature": 0.5,
+        "max_tokens": 250
     }
 
     try:
@@ -355,8 +358,8 @@ async def qwen_only(payload: Dict[str, Any] = Body(...)):
         "messages": [
             {"role": "user", "content": question}
         ],
-        "temperature": 0.7,
-        "max_tokens": 300
+        "temperature": 0.5,
+        "max_tokens": 250
     }
 
     async with httpx.AsyncClient(timeout=60) as client:

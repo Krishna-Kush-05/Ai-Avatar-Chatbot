@@ -11,4 +11,4 @@ Requests==2.33.1
 Werkzeug==3.1.7
 WTForms==3.2.1
 python-dotenv==1.0.1
-
+email-validator
