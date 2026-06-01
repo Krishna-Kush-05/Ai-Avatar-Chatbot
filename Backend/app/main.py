@@ -1,3 +1,7 @@
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request
 # main.py
 from fastapi import FastAPI, UploadFile, File, Body, HTTPException, Query, Form
 from fastapi import Depends
@@ -40,6 +44,11 @@ from app.utils.kb_manager import KnowledgeBaseManager
 # ======================================================
 load_dotenv()
 app = FastAPI()
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 cache = TTLCache(maxsize=100, ttl=3600)
 
@@ -214,8 +223,8 @@ async def query(payload: Dict[str, Any] = Body(...)):
 
     async def stream_qwen():
         try:
-            async with httpx.AsyncClient(timeout=120) as client:
-                response = await client.post(HF_URL, headers=headers, json=body)
+            async with httpx.AsyncClient(timeout=45.0) as client:
+                response = await call_hf_with_retry(client, HF_URL, headers, body, max_retries=2)
 
             print("HF STATUS:", response.status_code)
             print("HF RAW:", response.text[:400])
@@ -330,8 +339,8 @@ async def query_eval(payload: Dict[str, Any] = Body(...)):
     }
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
-            response = await client.post(HF_URL, headers=headers, json=body)
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            response = await call_hf_with_retry(client, HF_URL, headers, body, max_retries=2)
 
         if response.status_code != 200:
             raise HTTPException(500, response.text)
@@ -383,8 +392,8 @@ async def qwen_only(payload: Dict[str, Any] = Body(...)):
         "max_tokens": 250
     }
 
-    async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.post(HF_URL, headers=headers, json=body)
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        response = await call_hf_with_retry(client, HF_URL, headers, body, max_retries=2)
 
     if response.status_code != 200:
         raise HTTPException(500, response.text)
@@ -396,16 +405,40 @@ async def qwen_only(payload: Dict[str, Any] = Body(...)):
 # ======================================================
 # UPLOAD
 # ======================================================
+def _process_uploaded_files_sync(filepaths, workspace_id):
+    import re
+    from app.utils.docs_processor import load_and_split
+    chunks = []
+    qa_count = 0
+    print(f"[{workspace_id}] Starting heavy processing for {len(filepaths)} files...")
+    
+    for dst in filepaths:
+        print(f"[{workspace_id}] Processing file: {dst}")
+        if dst.lower().endswith(".md"):
+            with open(dst, encoding="utf-8") as f:
+                text = f.read()
+            for q, a in re.findall(r"Q:\s*(.*?)\nA:\s*(.*?)(?:\n{1,}|$)", text, re.DOTALL):
+                knowledge_db.add_qa_pair(workspace_id, q.strip(), a.strip(), "")
+                qa_count += 1
+        
+        file_chunks = load_and_split(dst)
+        chunks.extend(file_chunks)
+        print(f"[{workspace_id}] Extracted {len(file_chunks)} chunks from {dst}")
+        
+    if chunks:
+        print(f"[{workspace_id}] Embedding and indexing {len(chunks)} total chunks...")
+        document_db.add_documents(chunks, workspace_id)
+        print(f"[{workspace_id}] Indexing complete!")
+        
+    return len(chunks), qa_count
+
 @app.post("/upload")
 async def upload(
     files: List[UploadFile] = File(...),
     workspace_id: str = Form(...)
 ):
-    chunks = []
-    qa_count = 0
-
     ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx"}
-    MAX_FILE_SIZE = 100* 1024 * 1024  # 10 MB
+    MAX_FILE_SIZE = 100* 1024 * 1024  # 100 MB
 
     # Validation pass
     for file in files:
@@ -413,38 +446,41 @@ async def upload(
         if ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(400, f"Unsupported file type: {ext}")
 
-        # Check size without loading entire file into memory if size is available
         file_size = getattr(file, "size", None)
         if file_size is None:
-            await file.seek(0, os.SEEK_END)
+            await file.seek(0, __import__('os').SEEK_END)
             file_size = file.file.tell()
             await file.seek(0)
             
         if file_size > MAX_FILE_SIZE:
-            raise HTTPException(400, f"File {file.filename} exceeds the 10MB limit.")
+            raise HTTPException(400, f"File {file.filename} exceeds the 100MB limit.")
 
     raw_dir = f"./data/raw_docs/{workspace_id}"
     os.makedirs(raw_dir, exist_ok=True)
-
+    
+    saved_paths = []
     for file in files:
         dst = os.path.join(raw_dir, file.filename)
         with open(dst, "wb") as f:
+            import shutil
             shutil.copyfileobj(file.file, f)
+        saved_paths.append(dst)
 
-        if dst.lower().endswith(".md"):
-            with open(dst, encoding="utf-8") as f:
-                text = f.read()
-            for q, a in re.findall(r"Q:\s*(.*?)\nA:\s*(.*?)(?:\n{1,}|$)", text, re.DOTALL):
-                knowledge_db.add_qa_pair(workspace_id, q.strip(), a.strip(), "")
-                qa_count += 1
-
-        chunks.extend(load_and_split(dst))
-
-    if chunks:
-        document_db.add_documents(chunks, workspace_id)
+    try:
+        import asyncio
+        chunks_len, qa_count = await asyncio.wait_for(
+            asyncio.to_thread(_process_uploaded_files_sync, saved_paths, workspace_id),
+            timeout=180.0
+        )
+    except asyncio.TimeoutError:
+        print(f"[{workspace_id}] Timeout error during file processing.")
+        raise HTTPException(504, "File processing timed out. Files were saved but might not be fully indexed.")
+    except Exception as e:
+        print(f"[{workspace_id}] Error during file processing: {e}")
+        raise HTTPException(500, f"Error processing files: {str(e)}")
 
     return {
-        "message": f"Uploaded {len(files)} file(s), indexed {len(chunks)} chunks",
+        "message": f"Uploaded {len(files)} file(s), indexed {chunks_len} chunks",
         "qa_indexed": qa_count
     }
 

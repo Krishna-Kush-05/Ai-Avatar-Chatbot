@@ -641,7 +641,7 @@ def speak():
 # ─────────────────────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────────────────────
-BASE_FASTAPI_URL = os.environ.get("FASTAPI_URL", "http://127.0.0.1:8000")
+BASE_FASTAPI_URL = os.environ.get("BASE_FASTAPI_URL", "http://127.0.0.1:8000")
 FASTAPI_API_KEY = os.environ.get("FASTAPI_API_KEY")
 if not FASTAPI_API_KEY:
     raise RuntimeError("FASTAPI_API_KEY environment variable is missing and is strictly required.")

@@ -19,11 +19,17 @@ __pycache__/
 *.sqlite3
 chat_avatar.db
 
+# Ignore application data
+Backend/data/
+data/
+instance/
+uploads/
+sent_emails/
+
 # Ignore log files
 *.log
 
-# Ignore large model files (optional, but recommended)
-# Consider using Git LFS (Large File Storage) for these if you need to version them.
+# Ignore large model files
 *.onnx
 *.pkl
 *.h5
@@ -31,10 +37,3 @@ chat_avatar.db
 # Ignore operating system-specific files
 .DS_Store
 Thumbs.db
-
-.env
-*.db
-data/
-instance/
-uploads/
-sent_emails/

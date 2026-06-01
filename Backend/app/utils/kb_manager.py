@@ -1,3 +1,4 @@
+from app.utils.embeddings import embedding_manager
 # app/utils/kb_manager.py
 
 import sqlite3
@@ -15,7 +16,7 @@ class KnowledgeBaseManager:
         self.db_path = db_path
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
+        self._cache_built = False
 
         self._cache: List[Tuple[str, str, torch.Tensor, str]] = []
 
@@ -34,7 +35,18 @@ class KnowledgeBaseManager:
                 """
             )
 
-        self._build_cache()
+        # self._build_cache() deferred to lazy load
+
+    def _get_model(self):
+        try:
+            return embedding_manager.get_qa_embedding_model()
+        except Exception as e:
+            raise ValueError(f"QA embedding model unavailable: {str(e)}")
+
+    def _ensure_cache(self):
+        if not self._cache_built:
+            self._build_cache()
+            self._cache_built = True
 
     def _build_cache(self):
 
@@ -50,7 +62,7 @@ class KnowledgeBaseManager:
 
         questions = [r[1] for r in rows]
 
-        embeddings = self.model.encode(
+        embeddings = self._get_model().encode(
             questions,
             convert_to_tensor=True
         )
@@ -65,6 +77,7 @@ class KnowledgeBaseManager:
             )
 
     def add_qa_pair(self, workspace_id: str, q: str, a: str, tags: Optional[str]):
+        self._ensure_cache()
 
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
@@ -76,7 +89,7 @@ class KnowledgeBaseManager:
             )
             conn.commit()
 
-        emb = self.model.encode(q, convert_to_tensor=True)
+        emb = self._get_model().encode(q, convert_to_tensor=True)
 
         self._cache.append((q, a, emb, workspace_id))
 
@@ -103,6 +116,7 @@ class KnowledgeBaseManager:
         ]
 
     def delete_qa_pair(self, qa_id: int, workspace_id: str):
+        self._ensure_cache()
 
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("DELETE FROM qa_pairs WHERE id = ? AND workspace_id = ?", (qa_id, workspace_id))
@@ -111,6 +125,7 @@ class KnowledgeBaseManager:
         self._build_cache()
 
     def get_best_answer(self, workspace_id: str, question: str):
+        self._ensure_cache()
 
         with sqlite3.connect(self.db_path) as conn:
 
@@ -129,7 +144,7 @@ class KnowledgeBaseManager:
         if not self._cache:
             return None, 0.0
 
-        q_emb = self.model.encode(question, convert_to_tensor=True)
+        q_emb = self._get_model().encode(question, convert_to_tensor=True)
 
         best_score = 0
         best_answer = None
@@ -148,8 +163,9 @@ class KnowledgeBaseManager:
         return best_answer, best_score
 
     def reset_knowledge_base(self, workspace_id: str):
+        self._ensure_cache()
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("DELETE FROM qa_pairs WHERE workspace_id = ?", (workspace_id,))
             conn.commit()
         
-        self._build_cache()
+        # self._build_cache() deferred to lazy load

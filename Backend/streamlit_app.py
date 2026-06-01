@@ -8,7 +8,7 @@ import json
 from typing import List, Dict, Any, Optional
 
 # --- Configuration ---
-API_URL = "http://localhost:8000"
+BASE_FASTAPI_URL = os.environ.get("BASE_FASTAPI_URL", "http://127.0.0.1:8000")
 TABS = ["💬 Chat", "📚 Resources", "🧠 Knowledge", "⚙️ Admin", "📊 Evaluation"]
 
 st.set_page_config(page_title="MITAOE AI Assistant", layout="wide", page_icon="🤖")
@@ -26,7 +26,7 @@ if "kb_to_delete" not in st.session_state:
 def api_request(endpoint: str, method: str = "GET", data: Optional[Dict] = None,
                 params: Optional[Dict] = None, files: Optional[List] = None, stream: bool = False):
     """A centralized function to handle all API requests."""
-    url = f"{API_URL}/{endpoint}"
+    url = f"{BASE_FASTAPI_URL}/{endpoint}"
     try:
         if method == "GET":
             return requests.get(url, params=params, stream=stream, timeout=30)

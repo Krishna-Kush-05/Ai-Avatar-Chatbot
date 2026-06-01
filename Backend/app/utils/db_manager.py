@@ -1,3 +1,4 @@
+from app.utils.embeddings import embedding_manager
 # app/utils/db_manager.py
 import os
 import shutil
@@ -14,10 +15,14 @@ class ChromaDBManager:
         import os
         os.makedirs(self.persist_directory, exist_ok=True)
 
-        self.embedding_function = HuggingFaceEmbeddings(
-            model_name="BAAI/bge-base-en-v1.5"
-        )
+        self._embedding_model_name = "BAAI/bge-base-en-v1.5 (lazy loaded)"
         self._collections = {}
+
+    def _get_embedding_function(self):
+        try:
+            return embedding_manager.get_document_embedding_model()
+        except Exception as e:
+            raise ValueError(f"Embedding model unavailable: {str(e)}")
 
     def _get_collection(self, workspace_id: str):
         if not workspace_id:
@@ -32,7 +37,7 @@ class ChromaDBManager:
         if safe_name not in self._collections:
             self._collections[safe_name] = Chroma(
                 persist_directory=self.persist_directory,
-                embedding_function=self.embedding_function,
+                embedding_function=self._get_embedding_function(),
                 collection_name=safe_name
             )
         return self._collections[safe_name]
@@ -136,12 +141,12 @@ class ChromaDBManager:
                 "collections": len(self._collections) or 1,
                 "total_documents": total_docs,
                 "indexed_chunks": total_docs,
-                "model": self.embedding_function.model_name
+                "model": self._embedding_model_name
             }
         except Exception:
             return {
                 "collections": 1,
                 "total_documents": 0,
                 "indexed_chunks": 0,
-                "model": self.embedding_function.model_name
+                "model": self._embedding_model_name
             }
