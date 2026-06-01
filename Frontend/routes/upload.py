@@ -1,9 +1,11 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, stream_with_context, Response, send_from_directory, abort
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, stream_with_context, Response, send_from_directory, abort, current_app
 from flask_login import login_required, login_user, logout_user, current_user
 import os
 import time
 import json as json_lib
 import fitz
+import requests
+from datetime import datetime
 from werkzeug.utils import secure_filename
 
 # Models and Forms
@@ -126,7 +128,7 @@ def upload_submit():
 
 # 👈 NEW: Custom route to serve preview images from the UPLOADS folder@upload_bp.route('/uploads/previews/<filename>', endpoint='uploaded_preview')
 def uploaded_preview(filename):
-    return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], 'previews'), filename)
+    return send_from_directory(os.path.join(current_app.config['UPLOAD_FOLDER'], 'previews'), filename)
 @upload_bp.route("/api/upload", methods=["POST"], endpoint='api_upload')
 @login_required
 def api_upload():
