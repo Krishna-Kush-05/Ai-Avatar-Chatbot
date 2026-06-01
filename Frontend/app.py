@@ -8,6 +8,9 @@ from werkzeug.utils import secure_filename
 import os
 from tts import generate_audio
 import requests
+from services import api_client
+from services.tts_service import generate_tts_audio
+
 from flask_cors import CORS
 
 # Load environment variables
@@ -499,11 +502,7 @@ def preview_pdf():
     # --- Send file to FastAPI backend ---
     try:
         with open(temp_path, 'rb') as f:
-            resp = requests.post(
-                BASE_FASTAPI_URL + "/upload",
-                files={"files": (filename, f, "application/pdf")}, data={"workspace_id": _get_workspace_id()},
-                headers=FASTAPI_HEADERS, timeout=60
-            )
+            resp = api_client.upload_files(files={"files": (filename, f, "application/pdf")}, workspace_id=_get_workspace_id())
         if resp.status_code == 200:
             result = resp.json()
             flash(f"Upload successful: {result.get('message', '')}", 'success')
@@ -574,64 +573,15 @@ def transcribe_audio():
 @login_required
 def speak():
     """
-    TTS endpoint: ElevenLabs (primary) → gTTS (fallback).
-    Generates a unique audio file per user to prevent caching/repeats,
-    and cleans up the user's old audio files to save space as requested.
+    TTS endpoint: Uses the central tts_service.
     """
     text = request.json.get("text", "")
     if not text:
         return jsonify({"error": "No text provided"}), 400
 
-    import time
-    import uuid
-    audio_dir = os.path.join("static", "audio")
-    os.makedirs(audio_dir, exist_ok=True)
-
-    # Clean up old audio files (older than 2 minutes to allow chunk sequences)
-    current_time = time.time()
-    for file in os.listdir(audio_dir):
-        if file.endswith(".mp3"):
-            file_path = os.path.join(audio_dir, file)
-            try:
-                # remove if older than 120 seconds
-                if current_time - os.path.getmtime(file_path) > 120:
-                    os.remove(file_path)
-            except Exception:
-                pass
-
-    # Create new unique file using UUID
-    audio_filename = f"{uuid.uuid4().hex}.mp3"
-    audio_path = os.path.join(audio_dir, audio_filename)
-
-    # --- Primary: ElevenLabs high-quality TTS ---
-    if ELEVENLABS_API_KEY:
-        try:
-            eleven_url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
-            headers = {
-                "xi-api-key": ELEVENLABS_API_KEY,
-                "Content-Type": "application/json",
-                "Accept": "audio/mpeg"
-            }
-            payload = {
-                "text": text,
-                "model_id": "eleven_monolingual_v1",
-                "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
-            }
-            resp = requests.post(eleven_url, json=payload, headers=headers, timeout=30)
-            if resp.status_code == 200:
-                with open(audio_path, "wb") as f:
-                    f.write(resp.content)
-                return jsonify({
-                    "audio_url": url_for('static', filename=f'audio/{audio_filename}')
-                })
-            else:
-                print(f"ElevenLabs returned {resp.status_code}, falling back to gTTS")
-        except Exception as e:
-            print(f"ElevenLabs TTS failed ({e}), falling back to gTTS")
-
-    # --- Fallback: gTTS ---
-    result = generate_audio(text, audio_path)
-    if result:
+    audio_filename = generate_tts_audio(text)
+    
+    if audio_filename:
         return jsonify({
             "audio_url": url_for('static', filename=f'audio/{audio_filename}')
         })
@@ -641,13 +591,6 @@ def speak():
 # ─────────────────────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────────────────────
-BASE_FASTAPI_URL = os.environ.get("BASE_FASTAPI_URL", "http://127.0.0.1:8000")
-FASTAPI_API_KEY = os.environ.get("FASTAPI_API_KEY")
-if not FASTAPI_API_KEY:
-    raise RuntimeError("FASTAPI_API_KEY environment variable is missing and is strictly required.")
-FASTAPI_HEADERS = {"Authorization": f"Bearer {FASTAPI_API_KEY}"}
-ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
-ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
 
 
 def _get_workspace_id():
@@ -681,11 +624,7 @@ def api_upload():
 
     multipart = [("files", (f.filename, f.stream, f.mimetype)) for f in files]
     try:
-        resp = requests.post(
-            BASE_FASTAPI_URL + "/upload",
-            files=multipart, data={"workspace_id": workspace_id},
-            headers=FASTAPI_HEADERS, timeout=120
-        )
+        resp = api_client.upload_files(files=multipart, workspace_id=workspace_id)
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Backend unreachable. Is FastAPI running on port 8000?"}), 502
@@ -702,11 +641,7 @@ def api_delete_doc():
     if not filename:
         return jsonify({"error": "filename parameter required"}), 400
     try:
-        resp = requests.delete(
-            BASE_FASTAPI_URL + "/raw_docs",
-            params={"filename": filename, "workspace_id": workspace_id},
-            headers=FASTAPI_HEADERS, timeout=30
-        )
+        resp = api_client.delete_raw_doc(filename, workspace_id)
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Backend unreachable"}), 502
@@ -724,11 +659,7 @@ def api_reset_db():
     """
     workspace_id = _get_workspace_id()
     try:
-        resp = requests.post(
-            BASE_FASTAPI_URL + "/reset_db",
-            params={"workspace_id": workspace_id},
-            headers=FASTAPI_HEADERS, timeout=60
-        )
+        resp = api_client.reset_db(workspace_id)
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Backend unreachable"}), 502
@@ -746,11 +677,7 @@ def api_ingest_website():
     if not url:
         return jsonify({"error": "url field is required"}), 400
     try:
-        resp = requests.post(
-            BASE_FASTAPI_URL + "/ingest/website",
-            json={"url": url, "workspace_id": workspace_id},
-            headers=FASTAPI_HEADERS, timeout=120
-        )
+        resp = api_client.ingest_website(url, workspace_id)
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Backend unreachable"}), 502
@@ -767,11 +694,7 @@ def api_db_stats():
     """
     workspace_id = _get_workspace_id()
     try:
-        resp = requests.get(
-            BASE_FASTAPI_URL + "/db_stats",
-            params={"workspace_id": workspace_id},
-            headers=FASTAPI_HEADERS, timeout=30
-        )
+        resp = api_client.get_db_stats(workspace_id)
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Backend unreachable"}), 502
@@ -797,12 +720,7 @@ def stream_response():
     @stream_with_context
     def generate():
         try:
-            with requests.post(
-                BASE_FASTAPI_URL + "/query",
-                json={"question": question, "workspace_id": workspace_id},
-                stream=True,
-                headers=FASTAPI_HEADERS, timeout=120
-            ) as response:
+            with api_client.send_query({"question": question, "workspace_id": workspace_id}) as response:
                 if response.status_code != 200:
                     yield f"data: {json_lib.dumps({'text': f'[ERROR]: Upstream returned {response.status_code}.'})}\n\n"
                     return
@@ -843,11 +761,7 @@ def api_knowledge_list():
     """Proxy: list all Q&A pairs for this workspace → FastAPI GET /knowledge."""
     workspace_id = _get_workspace_id()
     try:
-        resp = requests.get(
-            BASE_FASTAPI_URL + "/knowledge",
-            params={"workspace_id": workspace_id},
-            headers=FASTAPI_HEADERS, timeout=30
-        )
+        resp = api_client.get_knowledge(workspace_id)
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Backend unreachable"}), 502
@@ -864,11 +778,7 @@ def api_add_knowledge():
     data["workspace_id"] = workspace_id
     print(f"[DEBUG /api/add_knowledge] workspace_id={workspace_id!r}, data={data}")
     try:
-        resp = requests.post(
-            BASE_FASTAPI_URL + "/add_knowledge",
-            json=data,
-            headers=FASTAPI_HEADERS, timeout=30
-        )
+        resp = api_client.add_knowledge(data)
         print(f"[DEBUG /api/add_knowledge] FastAPI status={resp.status_code}, body={resp.text[:200]}")
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
@@ -885,11 +795,7 @@ def api_delete_knowledge(kid):
     """Proxy: delete a Q&A pair → FastAPI DELETE /knowledge/<id>."""
     workspace_id = _get_workspace_id()
     try:
-        resp = requests.delete(
-            f"{BASE_FASTAPI_URL}/delete_knowledge/{kid}",
-            params={"workspace_id": workspace_id},
-            headers=FASTAPI_HEADERS, timeout=30
-        )
+        resp = api_client.delete_knowledge(kid, workspace_id)
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Backend unreachable"}), 502
