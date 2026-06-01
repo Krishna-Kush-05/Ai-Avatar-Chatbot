@@ -1,39 +1,71 @@
-# Ignore Python virtual environment
+# =========================
+# ENV & SECRETS
+# =========================
+.env
+.env.*
+*.env
+
+# =========================
+# PYTHON ENV
+# =========================
 venv/
 .venv/
 env/
-.env
 
-# Ignore Python bytecode and cache
+# =========================
+# CACHE & BYTECODE
+# =========================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Ignore IDE and editor-specific files
-.idea/
-.vscode/
-
-# Ignore database files
+# =========================
+# DATABASES
+# =========================
 *.db
 *.sqlite3
-chat_avatar.db
 
-# Ignore application data
-Backend/data/
-data/
+# =========================
+# APP DATA (CRITICAL)
+# =========================
 instance/
+data/
 uploads/
 sent_emails/
+static/audio/
+static/previews/
+Backend/data/
+Frontend/instance/
+Frontend/uploads/
+Frontend/static/audio/
 
-# Ignore log files
-*.log
-
-# Ignore large model files
+# =========================
+# ML / MODEL FILES
+# =========================
 *.onnx
 *.pkl
 *.h5
 
-# Ignore operating system-specific files
+# =========================
+# LOGS & TEMP FILES
+# =========================
+*.log
+*.tmp
+
+# =========================
+# IDE
+# =========================
+.idea/
+.vscode/
+
+# =========================
+# OS FILES
+# =========================
 .DS_Store
 Thumbs.db
+
+# =========================
+# STREAMLIT
+# =========================
+.streamlit/
