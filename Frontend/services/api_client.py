@@ -1,5 +1,8 @@
 import os
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_FASTAPI_URL = os.environ.get("BASE_FASTAPI_URL", "http://127.0.0.1:8000")
 FASTAPI_API_KEY = os.environ.get("FASTAPI_API_KEY")
