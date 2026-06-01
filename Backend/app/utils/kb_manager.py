@@ -102,10 +102,10 @@ class KnowledgeBaseManager:
             for r in rows
         ]
 
-    def delete_qa_pair(self, qa_id: int):
+    def delete_qa_pair(self, qa_id: int, workspace_id: str):
 
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("DELETE FROM qa_pairs WHERE id = ?", (qa_id,))
+            conn.execute("DELETE FROM qa_pairs WHERE id = ? AND workspace_id = ?", (qa_id, workspace_id))
             conn.commit()
 
         self._build_cache()

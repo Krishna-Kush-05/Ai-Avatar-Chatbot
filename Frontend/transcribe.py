@@ -7,13 +7,30 @@ from faster_whisper import WhisperModel
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Load the model once when the file is imported
-model = WhisperModel("tiny", compute_type="auto")  # you can also use "small"
+# Model placeholder for singleton pattern
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        try:
+            print("⏳ Loading WhisperModel...")
+            _model = WhisperModel("tiny", compute_type="auto")  # you can also use "small"
+            print("✅ WhisperModel loaded successfully.")
+        except Exception as e:
+            print("❌ Failed to load WhisperModel:", e)
+            return None
+    return _model
 
 def transcribe_audio_file(audio_file):
     filename = secure_filename(audio_file.filename)
     file_path = os.path.join(UPLOAD_FOLDER, filename)
     audio_file.save(file_path)
+
+    model = get_model()
+    if model is None:
+        # Return graceful error message if model failed to load
+        return "Transcription model is currently unavailable."
 
     try:
         print("🔊 Transcribing with FasterWhisper:", file_path)

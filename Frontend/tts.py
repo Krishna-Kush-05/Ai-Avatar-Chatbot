@@ -7,10 +7,13 @@
 #                           This module implements the gTTS fallback.
 # ─────────────────────────────────────────────────────────────
 import os
+import uuid
 from gtts import gTTS
 
 
-def generate_audio(text: str, output_path: str = "static/audio/output.mp3"):
+def generate_audio(text: str, output_path: str = None):
+    if output_path is None:
+        output_path = f"static/audio/{uuid.uuid4().hex}.mp3"
     """
     Generate speech audio using gTTS (Google Text-to-Speech).
 

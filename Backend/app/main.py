@@ -1,5 +1,19 @@
 # main.py
 from fastapi import FastAPI, UploadFile, File, Body, HTTPException, Query, Form
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import os
+
+FASTAPI_API_KEY = os.getenv("FASTAPI_API_KEY")
+if not FASTAPI_API_KEY:
+    raise RuntimeError("FASTAPI_API_KEY environment variable is missing and is strictly required.")
+security = HTTPBearer()
+
+def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if credentials.credentials != FASTAPI_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+    return credentials.credentials
+
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -29,9 +43,12 @@ app = FastAPI()
 
 cache = TTLCache(maxsize=100, ttl=3600)
 
+FRONTEND_URLS = os.getenv("FRONTEND_URLS", "http://127.0.0.1:5000")
+allow_origins = [url.strip() for url in FRONTEND_URLS.split(",") if url.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -106,7 +123,9 @@ def format_sse(data: str, event: str):
 @app.post("/query")
 async def query(payload: Dict[str, Any] = Body(...)):
     question = (payload.get("question") or "").strip().lower()
-    workspace_id = payload.get("workspace_id", "default")
+    workspace_id = payload.get("workspace_id")
+    if not workspace_id:
+        raise HTTPException(400, "workspace_id (chatbot_id) is strictly required")
 
     if not question:
         raise HTTPException(400, "Missing question")
@@ -236,7 +255,9 @@ async def query(payload: Dict[str, Any] = Body(...)):
 @app.post("/query_eval")
 async def query_eval(payload: Dict[str, Any] = Body(...)):
     question = (payload.get("question") or "").strip().lower()
-    workspace_id = payload.get("workspace_id", "default")
+    workspace_id = payload.get("workspace_id")
+    if not workspace_id:
+        raise HTTPException(400, "workspace_id (chatbot_id) is strictly required")
 
     if not question:
         raise HTTPException(400, "Missing question")
@@ -378,10 +399,30 @@ async def qwen_only(payload: Dict[str, Any] = Body(...)):
 @app.post("/upload")
 async def upload(
     files: List[UploadFile] = File(...),
-    workspace_id: str = Form("default")
+    workspace_id: str = Form(...)
 ):
     chunks = []
     qa_count = 0
+
+    ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx"}
+    MAX_FILE_SIZE = 100* 1024 * 1024  # 10 MB
+
+    # Validation pass
+    for file in files:
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(400, f"Unsupported file type: {ext}")
+
+        # Check size without loading entire file into memory if size is available
+        file_size = getattr(file, "size", None)
+        if file_size is None:
+            await file.seek(0, os.SEEK_END)
+            file_size = file.file.tell()
+            await file.seek(0)
+            
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(400, f"File {file.filename} exceeds the 10MB limit.")
+
     raw_dir = f"./data/raw_docs/{workspace_id}"
     os.makedirs(raw_dir, exist_ok=True)
 
@@ -412,7 +453,7 @@ async def upload(
 # DB STATS
 # ======================================================
 @app.get("/db_stats")
-async def stats(workspace_id: str = Query("default")):
+async def stats(workspace_id: str = Query(...)):
     vect = document_db.get_stats()
 
     with sqlite3.connect("./data/knowledge_base.db") as conn:
@@ -446,12 +487,14 @@ async def stats(workspace_id: str = Query("default")):
 # KNOWLEDGE BASE
 # ======================================================
 @app.get("/knowledge")
-async def get_knowledge(workspace_id: str = Query("default")):
+async def get_knowledge(workspace_id: str = Query(...)):
     return knowledge_db.get_all_qa_pairs(workspace_id)
 
 @app.post("/add_knowledge")
 async def add_knowledge(payload: Dict[str, Any] = Body(...)):
-    workspace_id = payload.get("workspace_id", "default")
+    workspace_id = payload.get("workspace_id")
+    if not workspace_id:
+        raise HTTPException(400, "workspace_id (chatbot_id) is strictly required")
     q = payload.get("question", "").strip()
     a = payload.get("answer", "").strip()
     tags = payload.get("tags", "").strip()
@@ -463,8 +506,8 @@ async def add_knowledge(payload: Dict[str, Any] = Body(...)):
     return {"message": "Knowledge added"}
 
 @app.delete("/delete_knowledge/{qa_id}")
-async def delete_knowledge(qa_id: int):
-    knowledge_db.delete_qa_pair(qa_id)
+async def delete_knowledge(qa_id: int, workspace_id: str = Query(...), api_key: str = Depends(verify_api_key)):
+    knowledge_db.delete_qa_pair(qa_id, workspace_id)
     return {"message": "Deleted"}
 
 
@@ -473,7 +516,7 @@ async def delete_knowledge(qa_id: int):
 # RESET DB
 # ======================================================
 @app.post("/reset_db")
-async def reset_db(workspace_id: str = Query("default")):
+async def reset_db(workspace_id: str = Query(...)):
     # Step 1: Delete all vector embeddings for this workspace
     document_db.clear_workspace(workspace_id)
 
@@ -499,7 +542,7 @@ async def reset_db(workspace_id: str = Query("default")):
 # RAW DOCS
 # ======================================================
 @app.get("/raw_docs")
-async def list_raw_docs(workspace_id: str = Query("default")):
+async def list_raw_docs(workspace_id: str = Query(...)):
     base = f"./data/raw_docs/{workspace_id}"
     if not os.path.exists(base):
         return []
@@ -510,7 +553,7 @@ async def list_raw_docs(workspace_id: str = Query("default")):
 @app.delete("/raw_docs")
 async def delete_raw(
     filename: str = Query(...),
-    workspace_id: str = Query("default")
+    workspace_id: str = Query(...)
 ):
     src = f"./data/raw_docs/{workspace_id}/{filename}"
     if not os.path.exists(src):
@@ -526,7 +569,9 @@ async def delete_raw(
 # ======================================================
 @app.post("/add_knowledge")
 async def add_knowledge(payload: Dict[str, Any] = Body(...)):
-    workspace_id = payload.get("workspace_id", "default")
+    workspace_id = payload.get("workspace_id")
+    if not workspace_id:
+        raise HTTPException(400, "workspace_id (chatbot_id) is strictly required")
     q = payload.get("question")
     a = payload.get("answer")
     t = payload.get("tags")
@@ -539,13 +584,13 @@ async def add_knowledge(payload: Dict[str, Any] = Body(...)):
 
 
 @app.get("/knowledge")
-async def list_kb(workspace_id: str = Query("default")):
+async def list_kb(workspace_id: str = Query(...)):
     return knowledge_db.get_all_qa_pairs(workspace_id)
 
 
 @app.delete("/knowledge/{id}")
-async def delete_kb(id: int):
-    knowledge_db.delete_qa_pair(id)
+async def delete_kb(id: int, workspace_id: str = Query(...), api_key: str = Depends(verify_api_key)):
+    knowledge_db.delete_qa_pair(id, workspace_id)
     return {"message": "Deleted"}
 
 
@@ -557,7 +602,9 @@ from app.utils.web_ingest import ingest_website
 @app.post("/ingest/website")
 def ingest_website_api(data: dict = Body(...)):
     url = data.get("url")
-    workspace_id = data.get("workspace_id", "default")
+    workspace_id = data.get("workspace_id")
+    if not workspace_id:
+        return {"error": "workspace_id (chatbot_id) is strictly required"}
     if not url:
         return {"error": "URL is required"}
 

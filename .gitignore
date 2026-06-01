@@ -31,3 +31,10 @@ chat_avatar.db
 # Ignore operating system-specific files
 .DS_Store
 Thumbs.db
+
+.env
+*.db
+data/
+instance/
+uploads/
+sent_emails/

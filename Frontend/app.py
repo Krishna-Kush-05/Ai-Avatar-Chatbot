@@ -500,10 +500,9 @@ def preview_pdf():
     try:
         with open(temp_path, 'rb') as f:
             resp = requests.post(
-                "http://127.0.0.1:8000/upload",
-                files={"files": (filename, f, "application/pdf")},
-                data={"workspace_id": _get_workspace_id()},
-                timeout=60
+                BASE_FASTAPI_URL + "/upload",
+                files={"files": (filename, f, "application/pdf")}, data={"workspace_id": _get_workspace_id()},
+                headers=FASTAPI_HEADERS, timeout=60
             )
         if resp.status_code == 200:
             result = resp.json()
@@ -530,13 +529,21 @@ def preview_pdf():
 @app.route("/upload/submit", methods=["POST"])
 @login_required
 def upload_submit():
+    from flask import abort
+    chatbot_id = int(request.form["chatbot_id"])
+    
+    # Verify that the chatbot belongs to the current user
+    chatbot = Chatbot.query.filter_by(id=chatbot_id, user_id=current_user.id).first()
+    if not chatbot:
+        abort(403)
+
     # 👈 Link PDF to the selected chatbot
     new_pdf = UploadedPDF(
         filename=request.form["filename"],
         filepath=request.form["filepath"],
         file_size_kb=int(request.form["filesize"]),
         pages=int(request.form["pages"]),
-        chatbot_id=int(request.form["chatbot_id"]) # 👈 Save the bot ID
+        chatbot_id=chatbot_id # 👈 Save the bot ID
     )
     db.session.add(new_pdf)
     db.session.commit()
@@ -576,14 +583,14 @@ def speak():
         return jsonify({"error": "No text provided"}), 400
 
     import time
+    import uuid
     audio_dir = os.path.join("static", "audio")
     os.makedirs(audio_dir, exist_ok=True)
 
-    # Clean up old audio files for THIS user (older than 2 minutes to allow chunk sequences)
+    # Clean up old audio files (older than 2 minutes to allow chunk sequences)
     current_time = time.time()
-    user_prefix = f"output_user_{current_user.id}_"
     for file in os.listdir(audio_dir):
-        if file.startswith(user_prefix) and file.endswith(".mp3"):
+        if file.endswith(".mp3"):
             file_path = os.path.join(audio_dir, file)
             try:
                 # remove if older than 120 seconds
@@ -592,8 +599,8 @@ def speak():
             except Exception:
                 pass
 
-    # Create new unique file
-    audio_filename = f"{user_prefix}{int(time.time() * 1000)}.mp3"
+    # Create new unique file using UUID
+    audio_filename = f"{uuid.uuid4().hex}.mp3"
     audio_path = os.path.join(audio_dir, audio_filename)
 
     # --- Primary: ElevenLabs high-quality TTS ---
@@ -635,6 +642,10 @@ def speak():
 # CONFIG
 # ─────────────────────────────────────────────────────────────
 BASE_FASTAPI_URL = os.environ.get("FASTAPI_URL", "http://127.0.0.1:8000")
+FASTAPI_API_KEY = os.environ.get("FASTAPI_API_KEY")
+if not FASTAPI_API_KEY:
+    raise RuntimeError("FASTAPI_API_KEY environment variable is missing and is strictly required.")
+FASTAPI_HEADERS = {"Authorization": f"Bearer {FASTAPI_API_KEY}"}
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
 
@@ -672,9 +683,8 @@ def api_upload():
     try:
         resp = requests.post(
             BASE_FASTAPI_URL + "/upload",
-            files=multipart,
-            data={"workspace_id": workspace_id},
-            timeout=120
+            files=multipart, data={"workspace_id": workspace_id},
+            headers=FASTAPI_HEADERS, timeout=120
         )
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
@@ -695,7 +705,7 @@ def api_delete_doc():
         resp = requests.delete(
             BASE_FASTAPI_URL + "/raw_docs",
             params={"filename": filename, "workspace_id": workspace_id},
-            timeout=30
+            headers=FASTAPI_HEADERS, timeout=30
         )
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
@@ -717,7 +727,7 @@ def api_reset_db():
         resp = requests.post(
             BASE_FASTAPI_URL + "/reset_db",
             params={"workspace_id": workspace_id},
-            timeout=60
+            headers=FASTAPI_HEADERS, timeout=60
         )
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
@@ -739,7 +749,7 @@ def api_ingest_website():
         resp = requests.post(
             BASE_FASTAPI_URL + "/ingest/website",
             json={"url": url, "workspace_id": workspace_id},
-            timeout=120
+            headers=FASTAPI_HEADERS, timeout=120
         )
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
@@ -760,7 +770,7 @@ def api_db_stats():
         resp = requests.get(
             BASE_FASTAPI_URL + "/db_stats",
             params={"workspace_id": workspace_id},
-            timeout=30
+            headers=FASTAPI_HEADERS, timeout=30
         )
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
@@ -791,7 +801,7 @@ def stream_response():
                 BASE_FASTAPI_URL + "/query",
                 json={"question": question, "workspace_id": workspace_id},
                 stream=True,
-                timeout=120
+                headers=FASTAPI_HEADERS, timeout=120
             ) as response:
                 if response.status_code != 200:
                     yield f"data: {json_lib.dumps({'text': f'[ERROR]: Upstream returned {response.status_code}.'})}\n\n"
@@ -836,7 +846,7 @@ def api_knowledge_list():
         resp = requests.get(
             BASE_FASTAPI_URL + "/knowledge",
             params={"workspace_id": workspace_id},
-            timeout=30
+            headers=FASTAPI_HEADERS, timeout=30
         )
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
@@ -857,7 +867,7 @@ def api_add_knowledge():
         resp = requests.post(
             BASE_FASTAPI_URL + "/add_knowledge",
             json=data,
-            timeout=30
+            headers=FASTAPI_HEADERS, timeout=30
         )
         print(f"[DEBUG /api/add_knowledge] FastAPI status={resp.status_code}, body={resp.text[:200]}")
         return jsonify(resp.json()), resp.status_code
@@ -873,10 +883,12 @@ def api_add_knowledge():
 @login_required
 def api_delete_knowledge(kid):
     """Proxy: delete a Q&A pair → FastAPI DELETE /knowledge/<id>."""
+    workspace_id = _get_workspace_id()
     try:
         resp = requests.delete(
             f"{BASE_FASTAPI_URL}/delete_knowledge/{kid}",
-            timeout=30
+            params={"workspace_id": workspace_id},
+            headers=FASTAPI_HEADERS, timeout=30
         )
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:

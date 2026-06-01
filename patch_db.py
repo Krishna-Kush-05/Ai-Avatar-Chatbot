@@ -1,13 +1,13 @@
-# app/utils/db_manager.py
+import re
 import os
-import shutil
-from typing import List, Dict, Any
-from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
 
+file_path = r'd:\Git Desk\Ai-Avatar-Chatbot\backend\app\utils\db_manager.py'
+with open(file_path, 'r', encoding='utf-8') as f:
+    content = f.read()
 
-class ChromaDBManager:
+# Replace ChromaDBManager class methods
+
+new_class = '''class ChromaDBManager:
 
     def __init__(self, persist_directory: str = "./data/chroma_db"):
         self.persist_directory = persist_directory
@@ -84,18 +84,17 @@ class ChromaDBManager:
     def clear_workspace(self, workspace_id: str = "default"):
         try:
             db = self._get_collection(workspace_id)
-            db.delete_collection()
-            
-            import re
-            safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', workspace_id)
-            if len(safe_name) < 3:
-                safe_name = safe_name + "_col"
-            safe_name = safe_name[:63]
-            
-            if safe_name in self._collections:
-                del self._collections[safe_name]
-                
-            print(f"Deleted vector collection for workspace: {workspace_id}")
+            count = db._collection.count()
+            if not count:
+                return
+
+            docs = db.get(
+                where={"workspace_id": {"$eq": workspace_id}}
+            )
+            ids_to_delete = docs.get("ids", [])
+            if ids_to_delete:
+                print(f"Clearing {len(ids_to_delete)} chunks for workspace: {workspace_id}")
+                db.delete(ids=ids_to_delete)
         except Exception as e:
             print(f"Warning: clear_workspace error: {e}")
 
@@ -145,3 +144,13 @@ class ChromaDBManager:
                 "indexed_chunks": 0,
                 "model": self.embedding_function.model_name
             }
+'''
+
+# Replace from 'class ChromaDBManager:' to end of file
+content = re.sub(r'class ChromaDBManager:.*', new_class, content, flags=re.DOTALL)
+# Make sure we add import re at the top if not present
+if 'import re' not in content:
+    content = 'import re\n' + content
+
+with open(file_path, 'w', encoding='utf-8') as f:
+    f.write(content)
