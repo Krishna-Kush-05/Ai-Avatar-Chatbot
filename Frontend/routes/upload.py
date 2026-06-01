@@ -9,14 +9,15 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 
 # Models and Forms
-from app import db, bcrypt, User, Chatbot, UploadedPDF
-from app import RegistrationForm, LoginForm, ProfileForm, BotConfigForm, InviteStudentForm, OrganizationForm, EmptyForm
-from app import _get_workspace_id
+from extensions import db, bcrypt
+from models import User, Chatbot, UploadedPDF
+from forms import RegistrationForm, LoginForm, ProfileForm, BotConfigForm, InviteStudentForm, OrganizationForm, EmptyForm
+from utils.workspace import _get_workspace_id
 
 # Services
 from services import api_client
 from services.tts_service import generate_tts_audio
-from email_service import send_invitation_email
+from services.email_service import send_invitation_email
 from transcribe import transcribe_audio_file
 
 upload_bp = Blueprint('upload', __name__)
@@ -27,11 +28,12 @@ def upload():
     user_bots = Chatbot.query.filter_by(user_id=current_user.id).all()
     if not user_bots:
         flash('You must configure an AI Assistant before you can upload knowledge.', 'warning')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('chatbot.dashboard'))
 
     return render_template("upload.html", title='Upload Knowledge', bots=user_bots)
 
-# --- UPDATED: /upload/preview route ---@upload_bp.route("/upload/preview", methods=["POST"], endpoint='preview_pdf')
+# --- UPDATED: /upload/preview route ---
+@upload_bp.route("/upload/preview", methods=["POST"], endpoint='preview_pdf')
 @login_required
 def preview_pdf():
     pdf_file = request.files.get("pdf")
@@ -98,7 +100,8 @@ def preview_pdf():
     )
 
 
-# --- UPDATED: /upload/submit route ---@upload_bp.route("/upload/submit", methods=["POST"], endpoint='upload_submit')
+# --- UPDATED: /upload/submit route ---
+@upload_bp.route("/upload/submit", methods=["POST"], endpoint='upload_submit')
 @login_required
 def upload_submit():
     from flask import abort
@@ -121,12 +124,13 @@ def upload_submit():
     db.session.commit()
 
     flash(f'File "{request.form["filename"]}" uploaded successfully.', 'success')
-    return redirect(url_for('dashboard')) # Redirect to dashboard after upload
+    return redirect(url_for('chatbot.dashboard')) # Redirect to dashboard after upload
 
 
 # --- API / UTILITY ROUTES ---
 
-# 👈 NEW: Custom route to serve preview images from the UPLOADS folder@upload_bp.route('/uploads/previews/<filename>', endpoint='uploaded_preview')
+# 👈 NEW: Custom route to serve preview images from the UPLOADS folder
+@upload_bp.route('/uploads/previews/<filename>', endpoint='uploaded_preview')
 def uploaded_preview(filename):
     return send_from_directory(os.path.join(current_app.config['UPLOAD_FOLDER'], 'previews'), filename)
 @upload_bp.route("/api/upload", methods=["POST"], endpoint='api_upload')

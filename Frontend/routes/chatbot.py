@@ -9,14 +9,15 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 
 # Models and Forms
-from app import db, bcrypt, User, Chatbot, UploadedPDF
-from app import RegistrationForm, LoginForm, ProfileForm, BotConfigForm, InviteStudentForm, OrganizationForm, EmptyForm
-from app import _get_workspace_id
+from extensions import db, bcrypt
+from models import User, Chatbot, UploadedPDF
+from forms import RegistrationForm, LoginForm, ProfileForm, BotConfigForm, InviteStudentForm, OrganizationForm, EmptyForm
+from utils.workspace import _get_workspace_id
 
 # Services
 from services import api_client
 from services.tts_service import generate_tts_audio
-from email_service import send_invitation_email
+from services.email_service import send_invitation_email
 from transcribe import transcribe_audio_file
 
 chatbot_bp = Blueprint('chatbot', __name__)
@@ -25,7 +26,7 @@ chatbot_bp = Blueprint('chatbot', __name__)
 def dashboard():
     if current_user.role not in ['teacher', 'institute']:
         flash('You do not have permission to access that page.', 'warning')
-        return redirect(url_for('chat'))
+        return redirect(url_for('chatbot.chat'))
 
     bot_form = BotConfigForm(prefix='bot')
     org_form = OrganizationForm(prefix='org')
@@ -42,14 +43,14 @@ def dashboard():
         db.session.add(new_bot)
         db.session.commit()
         flash(f'New AI Assistant "{new_bot.name}" has been configured and activated!', 'success')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('chatbot.dashboard'))
 
     # --- Handle Organization Details Form Submission ---
     if org_form.submit_org.data and org_form.validate_on_submit():
         current_user.institution = org_form.institution_name.data
         db.session.commit()
         flash('Organization details updated successfully.', 'success')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('chatbot.dashboard'))
 
     # Pre-fill org form
     org_form.institution_name.data = current_user.institution
@@ -69,7 +70,7 @@ def dashboard():
 def students():
     if current_user.role not in ['teacher', 'institute']:
         flash('You do not have permission to access that page.', 'warning')
-        return redirect(url_for('chat'))
+        return redirect(url_for('chatbot.chat'))
 
     invite_form = InviteStudentForm(prefix='invite')
 
@@ -81,12 +82,12 @@ def students():
         ).first()
         if existing_active_user:
             flash(f'A user with this email ({student_email}) is already an active member.', 'warning')
-            return redirect(url_for('students'))
+            return redirect(url_for('chatbot.students'))
 
         existing_invited_user = User.query.filter_by(email=student_email, role='student_invited').first()
         if existing_invited_user:
             flash(f'This email ({student_email}) has already been invited.', 'info')
-            return redirect(url_for('students'))
+            return redirect(url_for('chatbot.students'))
 
         invite_placeholder = User(
             username=f"invited_{student_email.split('@')[0]}_{datetime.now().strftime('%H%M%S')}",
@@ -100,7 +101,7 @@ def students():
 
         # Send onboarding email to the student
         try:
-            registration_url = url_for('register', role='student', email=student_email, _external=True)
+            registration_url = url_for('auth.register', role='student', email=student_email, _external=True)
             inviter_name = current_user.get_display_name()
             inviter_institution = current_user.institution
 
@@ -116,7 +117,7 @@ def students():
             print(f"[ERROR] Failed to send invitation email: {e}")
             flash(f'Invitation saved for {student_email}, but email sending failed: {str(e)}', 'warning')
 
-        return redirect(url_for('students'))
+        return redirect(url_for('chatbot.students'))
 
     invited_students = current_user.invited_users_placeholders.filter_by(role='student_invited').all()
     active_students = User.query.filter_by(invited_by_id=current_user.id, role='student').all()
@@ -140,17 +141,18 @@ def students():
 def revoke_invite(invite_id):
     if current_user.role not in ['teacher', 'institute']:
         flash('Permission denied.', 'warning')
-        return redirect(url_for('chat'))
+        return redirect(url_for('chatbot.chat'))
     invite = User.query.get_or_404(invite_id)
     if invite.invited_by_id != current_user.id or invite.role != 'student_invited':
         flash('You cannot revoke this invitation.', 'danger')
-        return redirect(url_for('students'))
+        return redirect(url_for('chatbot.students'))
     db.session.delete(invite)
     db.session.commit()
     flash(f'Invitation for {invite.email} has been revoked.', 'success')
-    return redirect(url_for('students'))
+    return redirect(url_for('chatbot.students'))
 
-# 👈 --- NEW: Profile Page Route ---@chatbot_bp.route("/profile", methods=['GET', 'POST'], endpoint='profile')
+# 👈 --- NEW: Profile Page Route ---
+@chatbot_bp.route("/profile", methods=['GET', 'POST'], endpoint='profile')
 @login_required
 def profile():
     form = ProfileForm()
@@ -159,7 +161,7 @@ def profile():
         current_user.institution = form.institution.data
         db.session.commit()
         flash('Your profile has been updated.', 'success')
-        return redirect(url_for('profile'))
+        return redirect(url_for('chatbot.profile'))
 
     # Pre-fill the form with existing data on GET request
     if request.method == 'GET':
@@ -182,7 +184,8 @@ def chat():
     # We will later add logic to select *which* bot to chat with.
     return render_template("index.html", title='AI Chat Assistant')
 
-# 👈 NEW: /knowledge/upload route@chatbot_bp.route("/transcribe", methods=["POST"], endpoint='transcribe_audio')
+# 👈 NEW: /knowledge/upload route
+@chatbot_bp.route("/transcribe", methods=["POST"], endpoint='transcribe_audio')
 def transcribe_audio():
     if "audio" not in request.files:
         return jsonify({"error": "No audio file uploaded"}), 400
@@ -216,18 +219,6 @@ def speak():
 # ─────────────────────────────────────────────────────────────
 
 
-def _get_workspace_id():
-    """Returns the current teacher's workspace_id (their email)."""
-    if not current_user.is_authenticated:
-        return "default"
-
-    # If the user is a student, their workspace belongs to the teacher who invited them
-    if current_user.role == 'student' and current_user.invited_by_id:
-        teacher = User.query.get(current_user.invited_by_id)
-        if teacher:
-            return teacher.email
-
-    return current_user.email
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -288,7 +279,8 @@ def api_db_stats():
 
 # ─────────────────────────────────────────────────────────────
 # STREAM RESPONSE  (updated: injects workspace_id)
-# ─────────────────────────────────────────────────────────────@chatbot_bp.route("/stream_response", methods=["POST"], endpoint='stream_response')
+# ─────────────────────────────────────────────────────────────
+@chatbot_bp.route("/stream_response", methods=["POST"], endpoint='stream_response')
 @login_required
 def stream_response():
     question = request.json.get("question")
@@ -374,7 +366,8 @@ def api_delete_knowledge(kid):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- NEW: Placeholder Routes for Sidebar Navigation ---@chatbot_bp.route("/resources", endpoint='resources')
+# --- NEW: Placeholder Routes for Sidebar Navigation ---
+@chatbot_bp.route("/resources", endpoint='resources')
 @login_required
 def resources():
     return render_template("resources.html", title="Resources/Documents")
@@ -383,7 +376,7 @@ def resources():
 def knowledge_base():
     if current_user.role not in ['teacher', 'institute']:
         flash('You do not have permission to access the knowledge base.', 'warning')
-        return redirect(url_for('chat'))
+        return redirect(url_for('chatbot.chat'))
     return render_template("knowledge_base.html", title="Knowledge Base")
 @chatbot_bp.route("/admin_tools", endpoint='admin_tools')
 @login_required
