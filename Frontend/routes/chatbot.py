@@ -16,7 +16,7 @@ from app import _get_workspace_id
 # Services
 from services import api_client
 from services.tts_service import generate_tts_audio
-from email_service import send_onboarding_email
+from email_service import send_invitation_email
 from transcribe import transcribe_audio_file
 
 chatbot_bp = Blueprint('chatbot', __name__)
@@ -104,11 +104,9 @@ def students():
             inviter_name = current_user.get_display_name()
             inviter_institution = current_user.institution
 
-            email_sent = send_onboarding_email(
-                recipient_email=student_email,
-                inviter_name=inviter_name,
-                inviter_institution=inviter_institution,
-                registration_url=registration_url
+            email_sent = send_invitation_email(
+                to_email=student_email,
+                invite_link=registration_url
             )
             if email_sent:
                 flash(f'Invitation sent to {student_email}. An onboarding email has been sent successfully.', 'success')

@@ -16,7 +16,7 @@ from app import _get_workspace_id
 # Services
 from services import api_client
 from services.tts_service import generate_tts_audio
-from email_service import send_onboarding_email
+from email_service import send_invitation_email
 from transcribe import transcribe_audio_file
 
 auth_bp = Blueprint('auth', __name__)
