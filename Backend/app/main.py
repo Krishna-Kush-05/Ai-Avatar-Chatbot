@@ -7,7 +7,9 @@ from fastapi import FastAPI, UploadFile, File, Body, HTTPException, Query, Form
 from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 FASTAPI_API_KEY = os.getenv("FASTAPI_API_KEY")
 if not FASTAPI_API_KEY:
     raise RuntimeError("FASTAPI_API_KEY environment variable is missing and is strictly required.")
@@ -20,9 +22,6 @@ def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)
 
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-
-import os
 import shutil
 import sqlite3
 import re
@@ -42,7 +41,6 @@ from app.utils.kb_manager import KnowledgeBaseManager
 # ======================================================
 # INIT
 # ======================================================
-load_dotenv()
 app = FastAPI()
 
 limiter = Limiter(key_func=get_remote_address)
@@ -114,6 +112,43 @@ def convert_latex_to_text(text: str) -> str:
     return text.strip()
 
 
+
+async def call_hf_with_retry(client, url, headers, json_body, max_retries=2):
+    import asyncio
+    for attempt in range(max_retries):
+        try:
+            response = await client.post(url, headers=headers, json=json_body)
+            if response.status_code == 200:
+                return response
+            else:
+                if response.status_code in (429, 500, 502, 503, 504):
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2)
+                        continue
+                return response
+        except Exception as e:
+            if attempt < max_retries - 1:
+                await asyncio.sleep(2)
+                continue
+            
+            class FallbackResponse:
+                status_code = 500
+                text = f"API call failed: {str(e)}"
+                def json(self):
+                    return {"choices": [{"message": {"content": "I am sorry, my language model is currently unavailable or timing out. Please try again later."}}]}
+                def iter_lines(self, decode_unicode=False):
+                    yield f'data: {{"text": "I am sorry, my language model is currently unavailable or timing out."}}'.encode('utf-8')
+            return FallbackResponse()
+            
+    class FallbackResponse:
+        status_code = 500
+        text = "Max retries reached"
+        def json(self):
+            return {"choices": [{"message": {"content": "I am sorry, my language model is currently unavailable or timing out. Please try again later."}}]}
+        def iter_lines(self, decode_unicode=False):
+            yield f'data: {{"text": "I am sorry, my language model is currently unavailable or timing out."}}'.encode('utf-8')
+    return FallbackResponse()
+
 def clean_llm_output(text: str) -> str:
     # Removed convert_latex_to_text(text) to let frontend render math properly
     text = re.sub(r"[ \t]+", " ", text)
@@ -155,9 +190,19 @@ async def query(payload: Dict[str, Any] = Body(...)):
             yield format_sse(kb_ans, "final_response")
         return StreamingResponse(send_kb(), media_type="text/event-stream")
 
-    # RAG context
+    # Combine KB entries below the short-circuit threshold with ChromaDB documents
+    kb_context_items = knowledge_db.get_relevant_answers(workspace_id, question, top_k=3, threshold=0.4)
+    kb_context = "\n\n".join(kb_context_items)
+
     docs = document_db.similarity_search(question, workspace_id, top_k=4)
-    context = "\n\n".join(d.page_content for d in docs)
+    chroma_context = "\n\n".join(d.page_content for d in docs)
+
+    context = ""
+    if kb_context:
+        context += f"Knowledge Base Entries:\n{kb_context}\n\n"
+    if chroma_context:
+        context += f"Document Excerpts:\n{chroma_context}"
+    context = context.strip()
 
     # RESTORED: original detailed system prompt (as plain string, not dict)
     system_content = (
@@ -282,9 +327,19 @@ async def query_eval(payload: Dict[str, Any] = Body(...)):
         cache[cache_key] = kb_ans
         return {"answer": kb_ans, "source": "knowledge_base"}
 
-    # RAG retrieval (same logic)
+    # Combine KB and RAG context
+    kb_context_items = knowledge_db.get_relevant_answers(workspace_id, question, top_k=3, threshold=0.4)
+    kb_context = "\n\n".join(kb_context_items)
+
     docs = document_db.similarity_search(question, workspace_id, top_k=4)
-    context = "\n\n".join(d.page_content for d in docs)
+    chroma_context = "\n\n".join(d.page_content for d in docs)
+
+    context = ""
+    if kb_context:
+        context += f"Knowledge Base Entries:\n{kb_context}\n\n"
+    if chroma_context:
+        context += f"Document Excerpts:\n{chroma_context}"
+    context = context.strip()
 
     # 🔴 CRITICAL: No context → no hallucination
     if not context.strip():
@@ -354,9 +409,9 @@ async def query_eval(payload: Dict[str, Any] = Body(...)):
 
         return {
             "answer": answer,
-            "contexts": [d.page_content for d in docs],  # 🔥 REQUIRED FOR RAGAS
+            "contexts": [context],  # 🔥 REQUIRED FOR RAGAS
             "source": "rag",
-            "context_used": len(docs)
+            "context_used": len(docs) + (1 if kb_context else 0)
         }
 
     except Exception as e:
@@ -407,7 +462,7 @@ async def qwen_only(payload: Dict[str, Any] = Body(...)):
 # ======================================================
 def _process_uploaded_files_sync(filepaths, workspace_id):
     import re
-    from app.utils.docs_processor import load_and_split
+    from app.utils.loader import load_and_split
     chunks = []
     qa_count = 0
     print(f"[{workspace_id}] Starting heavy processing for {len(filepaths)} files...")
@@ -600,34 +655,7 @@ async def delete_raw(
     return {"message": f"Deleted {filename}"}
 
 
-# ======================================================
-# KNOWLEDGE BASE
-# ======================================================
-@app.post("/add_knowledge")
-async def add_knowledge(payload: Dict[str, Any] = Body(...)):
-    workspace_id = payload.get("workspace_id")
-    if not workspace_id:
-        raise HTTPException(400, "workspace_id (chatbot_id) is strictly required")
-    q = payload.get("question")
-    a = payload.get("answer")
-    t = payload.get("tags")
 
-    if not q or not a:
-        raise HTTPException(400, "Missing question or answer")
-
-    knowledge_db.add_qa_pair(workspace_id, q, a, t)
-    return {"message": "Knowledge added"}
-
-
-@app.get("/knowledge")
-async def list_kb(workspace_id: str = Query(...)):
-    return knowledge_db.get_all_qa_pairs(workspace_id)
-
-
-@app.delete("/knowledge/{id}")
-async def delete_kb(id: int, workspace_id: str = Query(...), api_key: str = Depends(verify_api_key)):
-    knowledge_db.delete_qa_pair(id, workspace_id)
-    return {"message": "Deleted"}
 
 
 # ======================================================

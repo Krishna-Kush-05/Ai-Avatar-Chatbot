@@ -328,7 +328,10 @@ def api_knowledge_list():
     workspace_id = _get_workspace_id()
     try:
         resp = api_client.get_knowledge(workspace_id)
-        return jsonify(resp.json()), resp.status_code
+        from flask import make_response
+        response = make_response(jsonify(resp.json()), resp.status_code)
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Backend unreachable"}), 502
     except Exception as e:

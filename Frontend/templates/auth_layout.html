@@ -3,7 +3,7 @@
 {% block body_content %}
 <div class="auth-layout">
     <!-- Back to Home Button -->
-    <a href="{{ url_for('welcome') }}" class="auth-back-btn" aria-label="Go back to home page">
+    <a href="{{ url_for('auth.welcome') }}" class="auth-back-btn" aria-label="Go back to home page">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
@@ -13,7 +13,7 @@
 
     <div class="auth-container">
         <div class="auth-header">
-            <a href="{{ url_for('welcome') }}" class="logo" aria-label="Go to homepage">AI Platform</a>
+            <a href="{{ url_for('auth.welcome') }}" class="logo" aria-label="Go to homepage">AI Platform</a>
             <h1>{{ title }}</h1>
         </div>
 

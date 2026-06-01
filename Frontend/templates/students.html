@@ -389,7 +389,7 @@
                 </svg>
                 <h3>Invite a Student</h3>
             </div>
-            <form method="POST" action="{{ url_for('students') }}">
+            <form method="POST" action="{{ url_for('chatbot.students') }}">
                 <div class="invite-card-body">
                     {{ invite_form.hidden_tag() }}
                     <div class="invite-form-group">
@@ -481,7 +481,7 @@
                         <span class="student-status-dot"></span>
                         Pending
                     </span>
-                    <form method="POST" action="{{ url_for('revoke_invite', invite_id=invite.id) }}" style="display:inline;" onsubmit="return confirm('Revoke invite for {{ invite.email }}?')">
+                    <form method="POST" action="{{ url_for('chatbot.revoke_invite', invite_id=invite.id) }}" style="display:inline;" onsubmit="return confirm('Revoke invite for {{ invite.email }}?')">
                         {{ revoke_csrf() }}
                         <button type="submit" class="revoke-btn">Revoke</button>
                     </form>

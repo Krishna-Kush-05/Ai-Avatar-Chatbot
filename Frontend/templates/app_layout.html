@@ -733,7 +733,7 @@
     <!-- Sidebar -->
     <nav class="sidebar">
         <div class="sidebar-header">
-            <a href="{{ url_for('dashboard') }}" class="sidebar-brand">
+            <a href="{{ url_for('chatbot.dashboard') }}" class="sidebar-brand">
                 <div class="sidebar-brand-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="12 2 2 7 12 12 22 7 12 2" />
@@ -754,8 +754,8 @@
             <ul class="sidebar-nav-list">
                 {% if current_user.role in ['teacher', 'institute'] %}
                 <li class="sidebar-nav-item">
-                    <a href="{{ url_for('dashboard') }}"
-                        class="sidebar-nav-link {% if request.path == url_for('dashboard') %}active{% endif %}">
+                    <a href="{{ url_for('chatbot.dashboard') }}"
+                        class="sidebar-nav-link {% if request.path == url_for('chatbot.dashboard') %}active{% endif %}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="7" height="7" />
                             <rect x="14" y="3" width="7" height="7" />
@@ -767,8 +767,8 @@
                     <div class="tooltip">Dashboard</div>
                 </li>
                 <li class="sidebar-nav-item">
-                    <a href="{{ url_for('students') }}"
-                        class="sidebar-nav-link {% if request.path == url_for('students') %}active{% endif %}">
+                    <a href="{{ url_for('chatbot.students') }}"
+                        class="sidebar-nav-link {% if request.path == url_for('chatbot.students') %}active{% endif %}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                             <circle cx="9" cy="7" r="4"/>
@@ -783,8 +783,8 @@
 
 
                 <li class="sidebar-nav-item">
-                    <a href="{{ url_for('chat') }}"
-                        class="sidebar-nav-link {% if request.path == url_for('chat') %}active{% endif %}">
+                    <a href="{{ url_for('chatbot.chat') }}"
+                        class="sidebar-nav-link {% if request.path == url_for('chatbot.chat') %}active{% endif %}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                         </svg>
@@ -795,8 +795,8 @@
 
                 {% if current_user.role in ['teacher', 'institute'] %}
                 <li class="sidebar-nav-item">
-                    <a href="{{ url_for('upload') }}"
-                        class="sidebar-nav-link {% if request.path == url_for('upload') %}active{% endif %}">
+                    <a href="{{ url_for('upload.upload') }}"
+                        class="sidebar-nav-link {% if request.path == url_for('upload.upload') %}active{% endif %}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                             <polyline points="17 8 12 3 7 8" />
@@ -809,8 +809,8 @@
                 {% endif %}
 
                 <li class="sidebar-nav-item">
-                    <a href="{{ url_for('resources') }}"
-                        class="sidebar-nav-link {% if request.path == url_for('resources') %}active{% endif %}">
+                    <a href="{{ url_for('chatbot.resources') }}"
+                        class="sidebar-nav-link {% if request.path == url_for('chatbot.resources') %}active{% endif %}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
                             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
@@ -822,8 +822,8 @@
 
                 {% if current_user.role in ['teacher', 'institute'] %}
                 <li class="sidebar-nav-item">
-                    <a href="{{ url_for('knowledge_base') }}"
-                        class="sidebar-nav-link {% if request.path == url_for('knowledge_base') %}active{% endif %}">
+                    <a href="{{ url_for('chatbot.knowledge_base') }}"
+                        class="sidebar-nav-link {% if request.path == url_for('chatbot.knowledge_base') %}active{% endif %}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <ellipse cx="12" cy="5" rx="9" ry="3" />
                             <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
@@ -837,8 +837,8 @@
 
                 {% if current_user.role in ['teacher', 'institute'] %}
                 <li class="sidebar-nav-item">
-                    <a href="{{ url_for('admin_tools') }}"
-                        class="sidebar-nav-link {% if request.path == url_for('admin_tools') %}active{% endif %}">
+                    <a href="{{ url_for('chatbot.admin_tools') }}"
+                        class="sidebar-nav-link {% if request.path == url_for('chatbot.admin_tools') %}active{% endif %}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3" />
                             <path
@@ -851,8 +851,8 @@
                 {% endif %}
 
                 <li class="sidebar-nav-item">
-                    <a href="{{ url_for('profile') }}"
-                        class="sidebar-nav-link {% if request.path == url_for('profile') %}active{% endif %}">
+                    <a href="{{ url_for('chatbot.profile') }}"
+                        class="sidebar-nav-link {% if request.path == url_for('chatbot.profile') %}active{% endif %}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                             <circle cx="12" cy="7" r="4" />
@@ -872,7 +872,7 @@
                     <div class="sidebar-user-role">{{ current_user.role }}</div>
                 </div>
             </div>
-            <a href="{{ url_for('logout') }}" class="sidebar-logout">
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-logout">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                     <polyline points="16 17 21 12 16 7" />
@@ -898,7 +898,7 @@
                     <h6 class="dropdown-header-name">{{ current_user.get_display_name() }}</h6>
                     <p class="dropdown-header-email">{{ current_user.email }}</p>
                 </div>
-                <a href="{{ url_for('profile') }}" class="dropdown-item">
+                <a href="{{ url_for('chatbot.profile') }}" class="dropdown-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                         <circle cx="12" cy="7" r="4" />
@@ -906,7 +906,7 @@
                     My Profile
                 </a>
                 <div class="dropdown-divider"></div>
-                <a href="{{ url_for('logout') }}" class="dropdown-item danger">
+                <a href="{{ url_for('auth.logout') }}" class="dropdown-item danger">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                         <polyline points="16 17 21 12 16 7" />

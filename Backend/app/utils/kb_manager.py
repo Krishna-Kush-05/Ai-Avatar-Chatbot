@@ -162,6 +162,27 @@ class KnowledgeBaseManager:
 
         return best_answer, best_score
 
+    def get_relevant_answers(self, workspace_id: str, question: str, top_k: int = 3, threshold: float = 0.4) -> list:
+        self._ensure_cache()
+        if not self._cache:
+            return []
+            
+        q_emb = self._get_model().encode(question, convert_to_tensor=True)
+        results = []
+        
+        for q, a, emb, ws in self._cache:
+            if ws != workspace_id:
+                continue
+                
+            score = util.cos_sim(q_emb, emb).item()
+            
+            if score >= threshold:
+                results.append((score, f"Q: {q}\nA: {a}"))
+                
+        # Sort descending by score and take top_k
+        results.sort(key=lambda x: x[0], reverse=True)
+        return [item[1] for item in results[:top_k]]
+
     def reset_knowledge_base(self, workspace_id: str):
         self._ensure_cache()
         with sqlite3.connect(self.db_path) as conn:

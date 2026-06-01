@@ -9,14 +9,15 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 
 # Models and Forms
-from app import db, bcrypt, User, Chatbot, UploadedPDF
-from app import RegistrationForm, LoginForm, ProfileForm, BotConfigForm, InviteStudentForm, OrganizationForm, EmptyForm
-from app import _get_workspace_id
+from extensions import db, bcrypt
+from models import User, Chatbot, UploadedPDF
+from forms import RegistrationForm, LoginForm, ProfileForm, BotConfigForm, InviteStudentForm, OrganizationForm, EmptyForm
+from utils.workspace import _get_workspace_id
 
 # Services
 from services import api_client
 from services.tts_service import generate_tts_audio
-from email_service import send_invitation_email
+from services.email_service import send_invitation_email
 from transcribe import transcribe_audio_file
 
 auth_bp = Blueprint('auth', __name__)
@@ -24,14 +25,14 @@ auth_bp = Blueprint('auth', __name__)
 def welcome():
     if current_user.is_authenticated:
         if current_user.role in ['teacher', 'institute']:
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('chatbot.dashboard'))
         else:
-            return redirect(url_for('chat'))
+            return redirect(url_for('chatbot.chat'))
     return render_template('welcome.html', title='Welcome')
 @auth_bp.route("/register", methods=['GET', 'POST'], endpoint='register')
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('welcome'))
+        return redirect(url_for('auth.welcome'))
 
     form = RegistrationForm()
 
@@ -67,9 +68,9 @@ def register():
         flash(f'Account created for {user.get_display_name()}! You are now logged in.', 'success')
 
         if user.role in ['teacher', 'institute']:
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('chatbot.dashboard'))
         else:
-            return redirect(url_for('chat'))
+            return redirect(url_for('chatbot.chat'))
 
     role = request.args.get('role', 'student')
     form.role.data = role
@@ -83,7 +84,7 @@ def register():
 @auth_bp.route("/login", methods=['GET', 'POST'], endpoint='login')
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('welcome'))
+        return redirect(url_for('auth.welcome'))
 
     form = LoginForm()
     if form.validate_on_submit():
@@ -92,7 +93,7 @@ def login():
         # Check if they are an invited placeholder trying to log in
         if user and user.role == 'student_invited':
             flash('You have been invited! Please register your account to set a password and get started.', 'info')
-            return redirect(url_for('register', role='student'))
+            return redirect(url_for('auth.register', role='student'))
 
         if user and user.check_password(form.password.data):
             login_user(user)
@@ -100,9 +101,9 @@ def login():
             next_page = request.args.get('next')
 
             if user.role in ['teacher', 'institute']:
-                return redirect(next_page or url_for('dashboard'))
+                return redirect(next_page or url_for('chatbot.dashboard'))
             else:
-                return redirect(next_page or url_for('chat'))
+                return redirect(next_page or url_for('chatbot.chat'))
         else:
             flash('Login Unsuccessful. Please check email and password', 'danger')
 
@@ -112,6 +113,6 @@ def login():
 def logout():
     logout_user()
     flash('You have been logged out.', 'info')
-    return redirect(url_for('login'))
+    return redirect(url_for('auth.login'))
 
 # --- CORE APPLICATION ROUTES ---

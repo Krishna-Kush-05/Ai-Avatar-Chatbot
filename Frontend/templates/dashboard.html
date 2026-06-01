@@ -17,7 +17,7 @@
             <div class="card-header">
                 <h3>Configure New AI Assistant</h3>
             </div>
-            <form method="POST" action="{{ url_for('dashboard') }}">
+            <form method="POST" action="{{ url_for('chatbot.dashboard') }}">
                 <div class="card-body">
                     {{ bot_form.hidden_tag() }}
 
@@ -81,7 +81,7 @@
             <div class="card-header">
                 <h3>Organization Details</h3>
             </div>
-            <form method="POST" action="{{ url_for('dashboard') }}">
+            <form method="POST" action="{{ url_for('chatbot.dashboard') }}">
                 <div class="card-body">
                     {{ org_form.hidden_tag() }}
                     <div class="form-group">

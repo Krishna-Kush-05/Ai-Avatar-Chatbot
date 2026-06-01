@@ -544,8 +544,8 @@
       for students, teams, and customers with lifelike avatars and natural voice interaction.
     </p>
     <div class="saas-cta-group">
-      <a href="{{ url_for('register', role='student') }}" class="saas-btn-primary">Get Started Free</a>
-      <a href="{{ url_for('login') }}" class="saas-btn-secondary">Sign In</a>
+      <a href="{{ url_for('auth.register', role='student') }}" class="saas-btn-primary">Get Started Free</a>
+      <a href="{{ url_for('auth.login') }}" class="saas-btn-secondary">Sign In</a>
     </div>
   </div>
 </section>
@@ -601,11 +601,11 @@
     </p>
   </div>
   <div class="saas-roles-grid">
-    <a href="{{ url_for('register', role='teacher') }}" class="saas-role-card">
+    <a href="{{ url_for('auth.register', role='teacher') }}" class="saas-role-card">
       <h3>Teacher / Educator</h3>
       <p>Create and manage custom AI chatbots for your students. Upload course materials and deploy interactive learning assistants.</p>
     </a>
-    <a href="{{ url_for('register', role='student') }}" class="saas-role-card">
+    <a href="{{ url_for('auth.register', role='student') }}" class="saas-role-card">
       <h3>Student / Learner</h3>
       <p>Access and interact with AI assistants from your institution. Get instant answers and learn with interactive AI avatars.</p>
     </a>
@@ -652,8 +652,8 @@
   <p class="saas-cta-description">
     Join educators, professionals, and students who are already using AI avatars to transform how they learn and work.
   </p>
-  <a href="{{ url_for('register', role='student') }}" class="saas-cta-button">Start Free Trial</a>
-  <a href="{{ url_for('login') }}" class="saas-cta-login">Already have an account? Sign in →</a>
+  <a href="{{ url_for('auth.register', role='student') }}" class="saas-cta-button">Start Free Trial</a>
+  <a href="{{ url_for('auth.login') }}" class="saas-cta-login">Already have an account? Sign in →</a>
 </section>
 
 <!-- Footer -->
