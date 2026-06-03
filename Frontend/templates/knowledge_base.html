@@ -94,7 +94,7 @@
         <div class="card-header">
             <h3>Add New Q&A Pair</h3>
         </div>
-        <form id="qa-form" onsubmit="addQAPair(); return false;">
+        <form id="qa-form" onsubmit="addKnowledge(); return false;">
             <div class="card-body">
                 <div class="form-group">
                     <label for="question">Question</label>
@@ -113,7 +113,7 @@
                 </div>
             </div>
             <div class="card-footer">
-                <button type="button" class="btn btn-primary" onclick="addQAPair()">Add to Knowledge Base</button>
+                <button type="button" class="btn btn-primary" onclick="addKnowledge()">Add to Knowledge Base</button>
             </div>
         </form>
 
@@ -144,160 +144,207 @@
         <h3>Existing Q&A Pairs</h3>
     </div>
     <div class="card-body" style="padding: 0;">
-        <div id="qa-list">
-            <div class="empty-state">
-                <div class="empty-state-icon">📋</div>
-                <p>Loading Q&A pairs...</p>
-            </div>
-        </div>
+        <div id="qa-list"></div>
     </div>
 </div>
 <script>
-    // Helper to safely display user inputs
-    function escapeHtml(unsafe) {
-        if (!unsafe) return '';
-        return String(unsafe)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    function loadKnowledgeBase() {
-        // Uses /api/knowledge proxy — workspace_id injected server-side
-        fetch('/api/knowledge')
-            .then(response => {
-                if (!response.ok) throw new Error('Server error: ' + response.status);
-                return response.json();
-            })
-            .then(items => {
-                // Guard: backend may return an error object instead of array
-                if (!Array.isArray(items)) {
-                    const errMsg = items.error || 'Unexpected response from server';
-                    document.getElementById('qa-list').innerHTML = `<p style="color: red; padding: 1rem;">Error: ${errMsg}</p>`;
-                    document.getElementById('qa-status').innerHTML = `<p style="color: red;">Error: ${errMsg}</p>`;
-                    return;
-                }
-
-                let html = '';
-                let totalPairs = items.length;
-
-                // Update status card
-                let tagCount = new Set();
-                items.forEach(item => {
-                    if (item.tags) {
-                        item.tags.split(',').forEach(tag => { if (tag.trim()) tagCount.add(tag.trim()); });
-                    }
-                });
-
-                let statusHtml = '<ul style="list-style: none; padding: 0;">';
-                statusHtml += `<li style="padding: 0.5rem 0;"><strong>Total Q&A Pairs:</strong> <span style="font-size: 1.5rem; color: #1a73e8; font-weight: bold;">${totalPairs}</span></li>`;
-                statusHtml += `<li style="padding: 0.5rem 0;"><strong>Unique Tags:</strong> <span style="font-size: 1.5rem; color: #34a853; font-weight: bold;">${tagCount.size}</span></li>`;
-                statusHtml += '</ul>';
-                document.getElementById('qa-status').innerHTML = statusHtml;
-
-                // Display Q&A list
-                if (items.length > 0) {
-                    html = '<table class="qa-table"><thead><tr><th style="width: 30%;">Question</th><th style="width: 40%;">Answer</th><th style="width: 20%;">Tags</th><th style="width: 10%; text-align: right;">Action</th></tr></thead><tbody>';
-
-                    items.forEach((item) => {
-                        const tags = item.tags ? item.tags.split(',').map(t => t.trim()).filter(t => t) : [];
-                        const tagsHtml = tags.length > 0
-                            ? tags.map(tag => `<span class="qa-tag">${escapeHtml(tag)}</span>`).join('')
-                            : '<span style="color: var(--color-text-light);">No tags</span>';
-
-                        html += `
-                            <tr>
-                                <td><div class="qa-question">${escapeHtml(item.question)}</div></td>
-                                <td><div class="qa-answer">${escapeHtml(item.answer)}</div></td>
-                                <td><div class="qa-tags">${tagsHtml}</div></td>
-                                <td style="text-align: right;">
-                                    <button class="btn btn-sm btn-danger" onclick="deleteQAPair(${item.id}, '${escapeHtml(item.question)}')">Delete</button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-
-                    html += '</tbody></table>';
-                } else {
-                    html = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>No Q&A pairs yet. Add your first pair above!</p></div>';
-                }
-                document.getElementById('qa-list').innerHTML = html;
-            })
-            .catch(error => {
-                document.getElementById('qa-list').innerHTML = '<p style="color: red; padding: 1rem;">Failed to load knowledge base. Is the backend running?</p>';
-                document.getElementById('qa-status').innerHTML = '<p style="color: red;">Failed to load</p>';
-                console.error('KB Load Error:', error);
-            });
-    }
-
-    function addQAPair() {
-        const question = document.getElementById('question').value.trim();
-        const answer = document.getElementById('answer').value.trim();
-        const tags = document.getElementById('tags').value.trim();
-
-        if (!question || !answer) {
-            alert('Question and Answer are required');
-            return;
-        }
-
-        document.getElementById('add-status').style.display = 'block';
-        document.getElementById('add-message').innerHTML = '<p style="color: #007bff;">Adding...</p>';
-
-        // Uses /api/add_knowledge proxy — workspace_id injected server-side
-        fetch('/api/add_knowledge', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question, answer, tags })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error || 'Server error ' + response.status);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            document.getElementById('add-message').innerHTML = '<p style="color: green; margin: 0;"><strong>✓ Success:</strong> Knowledge pair added!</p>';
-            document.getElementById('question').value = '';
-            document.getElementById('answer').value = '';
-            document.getElementById('tags').value = '';
-            setTimeout(loadKnowledgeBase, 500);
-            setTimeout(() => {
-                document.getElementById('add-status').style.display = 'none';
-            }, 4000);
-        })
-        .catch(error => {
-            document.getElementById('add-message').innerHTML = `<p style="color: red; margin: 0;"><strong>Error:</strong> ${error.message}</p>`;
-        });
-    }
-
-    function deleteQAPair(id, question) {
-        if (!confirm(`Delete Q&A pair: "${question}"?`)) return;
-
-        // Uses /api/delete_knowledge proxy
-        fetch(`/api/delete_knowledge/${id}`, { method: 'DELETE' })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error || 'Server error ' + response.status);
-                });
-            }
-            return response.json();
-        })
-        .then(() => loadKnowledgeBase())
-        .catch(error => alert('Failed to delete: ' + error.message));
-    }
-
     function escapeHtml(text) {
+        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 
-    // Load on page load
-    document.addEventListener('DOMContentLoaded', loadKnowledgeBase);
+    async function loadKnowledgeBase() {
+        const container = document.getElementById("qa-list");
+        const statusContainer = document.getElementById('qa-status');
+
+        try {
+            const res = await fetch('/api/knowledge', { cache: 'no-store' });
+            if (!res.ok) {
+                if (res.redirected && res.url.includes('/login')) {
+                    throw new Error('Session expired. Please reload the page to log in.');
+                }
+                throw new Error('Server error: ' + res.status);
+            }
+
+            const text = await res.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                if (text.includes('<html')) {
+                    throw new Error('Session expired. Please reload the page to log in.');
+                }
+                throw new Error('Invalid JSON from server');
+            }
+
+            if (!Array.isArray(data)) {
+                const errMsg = data.error || 'Unexpected response from server';
+                if (container) container.innerHTML = `<p style="color: red; padding: 1rem;">Error: ${errMsg}</p>`;
+                if (statusContainer) statusContainer.innerHTML = `<p style="color: red;">Error: ${errMsg}</p>`;
+                return;
+            }
+
+            const totalPairs = data.length;
+            const tagCount = new Set();
+            data.forEach(item => {
+                if (item.tags) {
+                    item.tags.split(',').forEach(tag => { if (tag.trim()) tagCount.add(tag.trim()); });
+                }
+            });
+
+            let statusHtml = '<ul style="list-style: none; padding: 0;">';
+            statusHtml += `<li style="padding: 0.5rem 0;"><strong>Total Q&A Pairs:</strong> <span style="font-size: 1.5rem; color: #1a73e8; font-weight: bold;">${totalPairs}</span></li>`;
+            statusHtml += `<li style="padding: 0.5rem 0;"><strong>Unique Tags:</strong> <span style="font-size: 1.5rem; color: #34a853; font-weight: bold;">${tagCount.size}</span></li>`;
+            statusHtml += '</ul>';
+            if (statusContainer) statusContainer.innerHTML = statusHtml;
+
+            if (container) {
+                container.innerHTML = "";
+                if (data.length > 0) {
+                    const table = document.createElement('table');
+                    table.className = 'qa-table';
+
+                    const thead = document.createElement('thead');
+                    thead.innerHTML = '<tr><th style="width: 30%;">Question</th><th style="width: 40%;">Answer</th><th style="width: 20%;">Tags</th><th style="width: 10%; text-align: right;">Action</th></tr>';
+                    table.appendChild(thead);
+
+                    const tbody = document.createElement('tbody');
+
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        const tags = item.tags ? item.tags.split(',').map(t => t.trim()).filter(t => t) : [];
+                        const tagsHtml = tags.length > 0
+                            ? tags.map(tag => `<span class="qa-tag">${escapeHtml(tag)}</span>`).join('')
+                            : '<span style="color: var(--color-text-light);">No tags</span>';
+
+                        row.innerHTML = `
+                            <td><div class="qa-question">${escapeHtml(item.question)}</div></td>
+                            <td><div class="qa-answer">${escapeHtml(item.answer)}</div></td>
+                            <td><div class="qa-tags">${tagsHtml}</div></td>
+                            <td style="text-align: right;">
+                                <button type="button" class="btn btn-sm btn-danger" onclick="deleteKnowledge(${item.id})">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+
+                    table.appendChild(tbody);
+                    container.appendChild(table);
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>No Q&A pairs yet. Add your first pair above!</p></div>';
+                }
+            }
+        } catch (error) {
+            if (container) container.innerHTML = `<p style="color: red; padding: 1rem;">Failed to load knowledge base: ${escapeHtml(error.message)}</p>`;
+            if (statusContainer) statusContainer.innerHTML = '<p style="color: red;">Failed to load</p>';
+            console.error('KB Load Error:', error);
+        }
+    }
+
+    async function addKnowledge() {
+        try {
+            const questionEl = document.getElementById('question');
+            const answerEl = document.getElementById('answer');
+            const tagsEl = document.getElementById('tags');
+            
+            if (!questionEl || !answerEl) {
+                alert('Form inputs not found. Please reload the page.');
+                return;
+            }
+
+            const question = questionEl.value.trim();
+            const answer = answerEl.value.trim();
+            const tags = tagsEl ? tagsEl.value.trim() : "";
+
+            if (!question || !answer) {
+                alert('Question and Answer are required');
+                return;
+            }
+
+            const addStatus = document.getElementById('add-status');
+            const addMessage = document.getElementById('add-message');
+
+            if (addStatus) addStatus.style.display = 'block';
+            if (addMessage) addMessage.innerHTML = '<p style="color:#007bff;margin:0;">Adding...</p>';
+
+            const response = await fetch('/api/add_knowledge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question, answer, tags })
+            });
+
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                if (response.redirected && response.url.includes('/login')) {
+                    throw new Error('Session expired. Please reload the page to log in.');
+                }
+                throw new Error('Invalid response from server.');
+            }
+
+            if (!response.ok) {
+                throw new Error(result.error || result.detail || 'Failed to add knowledge');
+            }
+
+            await loadKnowledgeBase();
+            
+            const form = document.getElementById('qa-form');
+            if (form) form.reset();
+
+            if (addMessage) addMessage.innerHTML = '<p style="color:green;margin:0;"><strong>✓ Success:</strong> Knowledge added.</p>';
+            if (addStatus) setTimeout(() => { addStatus.style.display = 'none'; }, 3000);
+
+        } catch (err) {
+            console.error(err);
+            const addStatus = document.getElementById('add-status');
+            const addMessage = document.getElementById('add-message');
+            if (addStatus && addMessage) {
+                addStatus.style.display = 'block';
+                addMessage.innerHTML = `<p style="color:red;margin:0;"><strong>Error:</strong> ${escapeHtml(err.message)}</p>`;
+            } else {
+                alert('Error: ' + err.message);
+            }
+        }
+    }
+
+    async function deleteKnowledge(id) {
+        if (!confirm('Delete Q&A pair?')) return;
+
+        try {
+            const response = await fetch(`/api/delete_knowledge/${id}`, { method: 'DELETE' });
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                if (response.redirected && response.url.includes('/login')) {
+                    throw new Error('Session expired. Please reload the page to log in.');
+                }
+                throw new Error('Invalid response from server.');
+            }
+            if (response.ok) {
+                await loadKnowledgeBase();
+            } else {
+                alert('Failed to delete: ' + (result.error || 'Server error'));
+            }
+        } catch (error) {
+            alert('Failed to delete: ' + error.message);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadKnowledgeBase();
+        
+        const form = document.getElementById('qa-form');
+        if (form) {
+            form.onsubmit = function(e) {
+                e.preventDefault();
+                addKnowledge();
+                return false;
+            };
+        }
+    });
 </script>
 {% endblock %}

@@ -188,5 +188,5 @@ class KnowledgeBaseManager:
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("DELETE FROM qa_pairs WHERE workspace_id = ?", (workspace_id,))
             conn.commit()
-        
-        # self._build_cache() deferred to lazy load
+
+        self._build_cache()

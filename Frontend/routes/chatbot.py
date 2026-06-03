@@ -342,18 +342,36 @@ def api_knowledge_list():
 def api_add_knowledge():
     """Proxy: add a Q&A pair → FastAPI POST /add_knowledge (workspace-isolated)."""
     workspace_id = _get_workspace_id()
-    data = request.get_json(silent=True) or {}
+    
+    # Support both JSON and Form data
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+    else:
+        data = request.form.to_dict()
+        
     data["workspace_id"] = workspace_id
     print(f"[DEBUG /api/add_knowledge] workspace_id={workspace_id!r}, data={data}")
+    
     try:
         resp = api_client.add_knowledge(data)
+        if resp.status_code != 200:
+            print(f"[ERROR /api/add_knowledge] FastAPI failed: {resp.status_code} - {resp.text}")
+            try:
+                err_msg = resp.json().get('detail', resp.text)
+            except:
+                err_msg = resp.text
+            flash(f"Failed to add knowledge: {err_msg}", "error")
+            return jsonify({"error": str(err_msg)}), resp.status_code
+
         print(f"[DEBUG /api/add_knowledge] FastAPI status={resp.status_code}, body={resp.text[:200]}")
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
-        print("[DEBUG /api/add_knowledge] ConnectionError - FastAPI unreachable")
+        print("[ERROR /api/add_knowledge] ConnectionError - FastAPI unreachable")
+        flash("Backend unreachable. Please try again later.", "error")
         return jsonify({"error": "Backend unreachable"}), 502
     except Exception as e:
-        print(f"[DEBUG /api/add_knowledge] Exception: {e}")
+        print(f"[ERROR /api/add_knowledge] Exception: {e}")
+        flash(f"An unexpected error occurred: {str(e)}", "error")
         return jsonify({"error": str(e)}), 500
 
 @chatbot_bp.route("/api/delete_knowledge/<int:kid>", methods=["DELETE"], endpoint='api_delete_knowledge')
